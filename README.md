@@ -1,6 +1,27 @@
 # Rac1.py
 Little script to listen to Rac1 catalan radio station from its public podcasts
 
+## Compatibility
+Python 2 & 3
+
+## Install
+Just need to install requirements. You can install some/all of them from your distro repos. You can also install it using pip/pip3, inside or not of a virtualenv. Also, it uses mplayer to play podcasts, so consider installing it using your distro repo manager. For example, for Debian/Ubuntu:
+
+```sh
+sudo apt install mplayer
+```
+
+### Using pip
+```sh
+pip install -U -r requirements.txt
+```
+
+### Using a virtualenv
+```sh
+source bin/activate
+pip install -U -r requirements.txt
+```
+
 ## Script help (catalan)
 
 ```
