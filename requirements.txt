@@ -1,0 +1,11 @@
+## Py 2
+# httplib
+## Py 3
+http
+
+argparse
+parsedatetime
+
+## Already at stdlib
+# xml.etree.ElementTree
+# unicodedata
