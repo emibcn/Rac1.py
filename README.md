@@ -1,5 +1,5 @@
 # Rac1.py
-Little script to listen to Rac1 catalan radio station from its public podcasts
+Small script to listen to Rac1 catalan radio station from its public podcasts.
 
 ## Compatibility
 Python 2 & 3
@@ -21,6 +21,8 @@ pip install -U -r requirements.txt
 source bin/activate
 pip install -U -r requirements.txt
 ```
+## Known issues & TODO
+Rac1 has recently changed its podcasts infrastructure. This changes have made this script inusable, right now. The only solution found, right now, is to query the Rac1 web app to get the list of available podcats. This is the next TODO of this project.
 
 ## Script help (catalan)
 
