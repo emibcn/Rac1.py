@@ -251,12 +251,13 @@ def get_rac1_page(date, page=0):
 def parse_rac1_data(data):
    '''Parse Rac1 data and return podcasts list in hour ascending order'''
    
+   my_re = re.compile(r'^.* (data-[^=]*)="([^"]*)".*$')
+   
    # Parse response:
    # - Filter lines containing data-audio-id or data-audioteca-search-page
-   # - Only get values for data-* HTML attributes, without quotes
    # - Decode from binary utf-8 to string
-   list = [ re.sub(rb'^.* (data-[^=]*)="([^"]*)".*$', rb'\1=\2', line )\
-              .decode('utf-8') 
+   # - Only get values for data-* HTML attributes, without quotes
+   list = [ re.sub(my_re, r'\1=\2', line.decode('utf-8')) \
               for line in data.split(b'\n') 
                  if b'data-audio-id' in line \
                     or b'data-audioteca-search-page' in line ]

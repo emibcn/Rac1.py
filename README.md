@@ -2,7 +2,7 @@
 Small script to listen to Rac1 catalan radio station from its public podcasts.
 
 ## Compatibility
-Python ~~2 &~~ 3
+Python 2 & 3
 
 ## Install
 Just need to install requirements. You can install some/all of them from your distro repos. You can also install it using pip/pip3, inside or not of a virtualenv. Also, it uses mplayer to play podcasts, so consider installing it using your distro repo manager. For example, for Debian/Ubuntu:
@@ -21,8 +21,12 @@ pip install -U -r requirements.txt
 source bin/activate
 pip install -U -r requirements.txt
 ```
+
 ## Known issues & TODO
-Rac1 has recently changed its podcasts infrastructure. This changes have made me change the script which, right now, has degraded to Python3 compatible only.
+Rac1 has recently changed its podcasts infrastructure. Now we need to
+download plain HTML to get a paginated list of the audios published on a
+date. It's not optimal (it would be better to call an API URL to get this
+as a JSON list), but it's functional.
 
 ## See also
 [Joan Domingo's - Podcasts-RAC1-Android](https://github.com/joan-domingo/Podcasts-RAC1-Android)
@@ -63,4 +67,14 @@ Pots tirar endavant i endarrere amb les tecles:
    - De direccions esquerra/dreta (10s)
    - De direccions amunt/avall (1m)
    - De Pàgina amunt/avall (10m)
+```
+
+## Examples
+```
+# Listen to the podcasts published today
+./Rac1.py -d today
+# Listen to the podcasts published yesterday
+./Rac1.py -d yesterday
+# Listen to the podcasts published last friday
+./Rac1.py -d 'last friday'
 ```
