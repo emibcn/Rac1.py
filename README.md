@@ -2,7 +2,7 @@
 Small script to listen to Rac1 catalan radio station from its public podcasts.
 
 ## Compatibility
-Python 2 & 3
+Python ~~2 &~~ 3
 
 ## Install
 Just need to install requirements. You can install some/all of them from your distro repos. You can also install it using pip/pip3, inside or not of a virtualenv. Also, it uses mplayer to play podcasts, so consider installing it using your distro repo manager. For example, for Debian/Ubuntu:
@@ -22,7 +22,7 @@ source bin/activate
 pip install -U -r requirements.txt
 ```
 ## Known issues & TODO
-Rac1 has recently changed its podcasts infrastructure. This changes have made this script inusable, right now. The only solution found, right now, is to query the Rac1 web app to get the list of available podcats. This is the next TODO of this project.
+Rac1 has recently changed its podcasts infrastructure. This changes have made me change the script which, right now, has degraded to Python3 compatible only.
 
 ## Script help (catalan)
 
