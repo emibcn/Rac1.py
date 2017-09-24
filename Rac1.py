@@ -24,10 +24,14 @@
 #  - parsedatetime
 #  - datetime
 #  - unicodedata
-#  - sys.exit
+#  - sys
 #  - subprocess
 #  - re
 #  - json
+#  - psutil
+#  - time
+#  - signal
+#  - os
 #
 # Other dependencies:
 #  - mplayer (shell command)
@@ -35,7 +39,7 @@
 
 from __future__ import print_function
 from pprint import pprint
-from subprocess import call,PIPE,CalledProcessError
+from subprocess import call, PIPE, CalledProcessError
 from sys import exit,stdout
 import re, json, unicodedata
 
@@ -52,20 +56,20 @@ except:
     File name: Rac1.py
     Author: Emilio del Giorgio
     Date created: 4/7/2017
-    Date last modified: 4/7/2017
+    Date last modified: 24/9/2017
     Python Version: 3 / 2.7
 '''
 
 __author__ = "Emilio del Giorgio"
 __license__ = "GPL"
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __maintainer__ = __author__
 __email__ = "emidaruma@gmail.com"
 __status__ = "Production"
 
 
 def isint(value):
-   '''Detect if a string has an integer value and returns boolean'''
+   '''Detect if a string has an integer value and returns the result as boolean'''
    
    try:
       int(value)
@@ -75,7 +79,7 @@ def isint(value):
 
 
 def normalize_encoding_upper(str):
-   '''Normalizes a string to an upper non-accents one'''
+   '''Normalizes a binary string to an upper non-accented one'''
    
    try:
       # Py 2
@@ -90,7 +94,7 @@ def normalize_encoding_upper(str):
 def parse_my_args():
    '''Parse ARGv and return arg object'''
    
-   from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter,RawDescriptionHelpFormatter
+   from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
    
    # Permet mostrar l'epilog amb la llista ben formatada, mentre es 
    # mostren els arguments i els seus defaults formatats correctament
@@ -164,8 +168,12 @@ def parse_my_args():
    if len(args.exclude) > 0:
       
       for exc in args.exclude:
+      
+         # Exclude by hour
          if isint(exc):
             excludes.append( exc )
+            
+         # Exclude by name
          else:
             excludes.extend( normalize_encoding_upper(exc).split(',') )
    
@@ -177,29 +185,35 @@ def parse_my_args():
 
 
 def parse_my_date(date_arg):
-   '''Parse date and return a DD-MM-YYYY string'''
+   '''Parse date and return a DD/MM/YYYY string'''
    
    # Can parse human-like dates, like 'date' command
    import parsedatetime as pdt # $ pip install parsedatetime
    from datetime import datetime
-
+   
+   # Get cal and now instances
    cal = pdt.Calendar()
    now = datetime.now()
    
-   # Get date from string
+   # Get date:
+   # - From string 'date_arg'
+   # - Using parsedatetime (pdt) calendar 'cal'
+   # - Relative to now
    date = cal.parseDT(date_arg, now)[0]
    
-   # Return date parsed as DD-MM-YYYY
+   # Return date string parsed as DD/MM/YYYY
    return date.strftime('%d/%m/%Y')
    
 
 def get_page(URL_HOST, URL_GET):
    '''Downloads a page'''
    
+   # Connect to server, send request and get response
    conn = httplib.HTTPConnection(URL_HOST)
    conn.request("GET", URL_GET)
    response = conn.getresponse()
    
+   # Get data from response and close connection
    data = response.read()
    conn.close()
    
@@ -228,8 +242,9 @@ def get_rac1_page(date, page=0):
    URL_HOST="www.rac1.cat:80"
    URL_GET="/audioteca/a-la-carta/cerca?text=&programId=&sectionId=HOUR&from={date}&to=&pageNumber={page}"
    
-   print("Descarreguem Feed XML del llistat de Podcasts amb data {date}: {url}{get}".format(date=date, url=URL_HOST, get=URL_GET.format(date=date, page=page)))
-
+   print("Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {url}{get}".format(date=date, url=URL_HOST, get=URL_GET.format(date=date, page=page)))
+   
+   # Return downloaded page
    return get_page(URL_HOST, URL_GET.format(date=date, page=page))
 
 
@@ -261,7 +276,7 @@ def get_audio_uuids(date):
    status, data = get_rac1_page(date)
    
    if status != 200:
-      print("Error intentant descarregar el XML amb el llistat de podcasts: {}: {}".format(status, data))
+      print("Error intentant descarregar la pàgina HTML amb el llistat de podcasts: {}: {}".format(status, data))
       exit(1)
    
    # Parse downloaded data, getting UUIDs initial list and pages list
@@ -278,7 +293,7 @@ def get_audio_uuids(date):
       status, data = get_rac1_page(date, p)
       
       if status != 200:
-         print("Error intentant descarregar el XML amb el llistat de podcasts: {}: {}".format(status, data))
+         print("Error intentant descarregar la pàgina HTML amb el llistat de podcasts: {}: {}".format(status, data))
          exit(1)
       
       # Parse page data
@@ -392,11 +407,15 @@ def play_all_podcasts(args, done_last=0):
       # From and To hours
       if not (args.from_hour <= podcast['audio']['hour'] <= args.to_hour):
          play = False
+         continue
 
       # Exclusions
       else:
          for exc in args.excludes:
-            if ( isint(exc) and int(exc) == podcast['audio']['hour'] ) or str(exc) in normalize_encoding_upper( podcast['audio']['title'] ) :
+            
+            # Exclude by hour and by name
+            if ( isint(exc) and int(exc) == podcast['audio']['hour'] ) or \
+                  str(exc) in normalize_encoding_upper( podcast['audio']['title'] ) :
                play = False
                break
       
@@ -429,7 +448,7 @@ def signal_handler(sign, frame):
    global mplayer_process
    
    # If mplayer process is defined
-   if mplayer_process != None:
+   if mplayer_process is not None:
       print("Waiting for mplayer to finish...")
       
       # Get process info
@@ -472,6 +491,8 @@ if __name__ == "__main__":
       done = play_all_podcasts(args, done_last=done_last)
       done_last += done
       
+      # If we could not play anything, don't try to download 
+      # the list again: there will be nothing, again
       if done == 0:
          exit(0)
    
