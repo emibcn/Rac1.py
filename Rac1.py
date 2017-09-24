@@ -336,13 +336,11 @@ def get_podcasts_list(date):
    
      - Using human readable dates (already normalized in parse_my_args)
      - From HTTP connection
-     - Parxe XML
+     - Parse HTTP and JSON
    '''
    
    # Get all day audio UUIDs
-   audio_uuid_list = get_audio_uuids(date)
-   
-   podcasts_list = [ get_podcast_data(uuid) for uuid in audio_uuid_list ]
+   podcasts_list = [ get_podcast_data(uuid) for uuid in get_audio_uuids(date) ]
    
    # DEBUG
    #pprint([ [podcast['audio']['time'], podcast['path']] for podcast in podcasts_list ])
@@ -434,16 +432,23 @@ def play_all_podcasts(args, done_last=0):
    # Return podcasts done
    return done
 
-
+already_exiting = False
 def signal_handler(sign, frame):
    '''Exits cleanly'''
    
-   import psutil, time
-
+   # Don't begin exit process more than once
+   global already_exiting
+   if already_exiting:
+      return
+   
+   already_exiting = True
+   
    # Flush stdout and wait until mplayer exits completely
    stdout.flush()
    print('CTRL-C!! Sortim!')
    
+   # Wait a second...
+   import time
    time.sleep(1)
    
    global mplayer_process
@@ -452,17 +457,24 @@ def signal_handler(sign, frame):
    if mplayer_process is not None:
       print("Waiting for mplayer to finish...")
       
-      # Get process info
-      process = psutil.Process(mplayer_process)
+      import psutil
       
-      # Kill mplayer childs and wait for them to exit completely
-      for proc in process.children(recursive=True):
-         proc.send_signal(SIGTERM)
-         proc.wait()
+      try:
+         # Get process info
+         process = psutil.Process(mplayer_process)
+      except:
+         print("MPlayer already ended.")
+      else:
+         print("Killing MPlayer and all possible childs.")
+         
+         # Kill mplayer childs and wait for them to exit completely
+         for proc in process.children(recursive=True):
+            proc.send_signal(SIGTERM)
+            proc.wait()
 
-      # Kill mplayer and wait for it to exit completely
-      process.send_signal(SIGTERM)
-      process.wait()
+         # Kill mplayer and wait for it to exit completely
+         process.send_signal(SIGTERM)
+         process.wait()
    
    # Reset terminal
    #subprocess.Popen(['reset']).wait()
@@ -478,6 +490,8 @@ if __name__ == "__main__":
    from os import fdopen
 
    signal(SIGINT, signal_handler)
+   
+   # Only Py2
    #stdout = fdopen(stdout.fileno(), 'w', 0)
 
    # Parse ARGv
