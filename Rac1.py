@@ -177,7 +177,7 @@ def parse_my_args():
 
 
 def parse_my_date(date_arg):
-   '''Parse date and return a DD-MM-YY string'''
+   '''Parse date and return a DD-MM-YYYY string'''
    
    # Can parse human-like dates, like 'date' command
    import parsedatetime as pdt # $ pip install parsedatetime
@@ -233,33 +233,38 @@ def get_rac1_page(date, page=0):
    return get_page(URL_HOST, URL_GET.format(date=date, page=page))
 
 
-def get_rac1_list_audio(date):
-   pass
-   
-
 def parse_rac1_data(data):
    '''Parse Rac1 data and return podcasts list in hour ascending order'''
-
+   
+   # Parse response:
+   # - Filter lines containing data-audio-id or data-audioteca-search-page
+   # - Only get values for data-* HTML attributes, without quotes
+   # - Decode from binary utf-8 to string
    list = [ re.sub(rb'^.* (data-[^=]*)="([^"]*)".*$', rb'\1=\2', line )\
               .decode('utf-8') 
               for line in data.split(b'\n') 
                  if b'data-audio-id' in line \
                     or b'data-audioteca-search-page' in line ]
    
+   # Filter results by type
    audio_uuid_list = [ line for line in list if 'data-audio-id' in line ]
    pages_list      = [ line for line in list if 'data-audioteca-search-page' in line ]
    
+   # Return segregated lists
    return audio_uuid_list, pages_list
 
 
 def get_audio_uuids(date):
+   '''Get full day audio UUIDs list'''
    
+   # Download date's first page
    status, data = get_rac1_page(date)
    
    if status != 200:
       print("Error intentant descarregar el XML amb el llistat de podcasts: {}: {}".format(status, data))
       exit(1)
    
+   # Parse downloaded data, getting UUIDs initial list and pages list
    audio_uuid_list, pages_list = parse_rac1_data(data)
    
    # Get extra pages, if needed
@@ -287,21 +292,25 @@ def get_audio_uuids(date):
 
 
 def get_podcast_data(uuid):
+   '''Download podcast information by its UUID'''
    
    URL_HOST="www.rac1.cat:80"
    URL_GET="/audioteca/piece/audio?id={uuid}"
    
+   # Download podcast JSON data
    status, data_raw = get_page(URL_HOST, URL_GET.format(uuid=uuid))
 
    if status != 200:
       print("Error intentant descarregar el JSON amb les dades del podcast: {}: {}".format(status, data_raw))
       exit(1)
    
+   # Parse JSON data
    data = json.loads(data_raw.decode('utf-8'))
    
    # Parse the hour
    data['audio']['hour'] = int(data['audio']['time'].split(':')[0])
    
+   # Return parsed data
    return data
    
 
@@ -343,6 +352,7 @@ def play_podcast(podcast, only_print=False, start='0'):
       print_args = call_args[:]
       print_args[-1] = '"{}"'.format(podcast['path'])
       
+      # Print execution line
       print(*print_args, sep=" ")
       return
       
@@ -418,9 +428,11 @@ def signal_handler(sign, frame):
    
    global mplayer_process
    
+   # If mplayer process is defined
    if mplayer_process != None:
       print("Waiting for mplayer to finish...")
       
+      # Get process info
       process = psutil.Process(mplayer_process)
       
       # Kill mplayer childs and wait for them to exit completely
