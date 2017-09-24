@@ -24,6 +24,9 @@ pip install -U -r requirements.txt
 ## Known issues & TODO
 Rac1 has recently changed its podcasts infrastructure. This changes have made me change the script which, right now, has degraded to Python3 compatible only.
 
+## See also
+[Joan Domingo's - Podcasts-RAC1-Android](https://github.com/joan-domingo/Podcasts-RAC1-Android)
+
 ## Script help (catalan)
 
 ```
