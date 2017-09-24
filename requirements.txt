@@ -7,5 +7,4 @@ argparse
 parsedatetime
 
 ## Already at stdlib
-# xml.etree.ElementTree
 # unicodedata

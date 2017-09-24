@@ -23,10 +23,11 @@
 #  - argparse
 #  - parsedatetime
 #  - datetime
-#  - xml.etree.ElementTree
 #  - unicodedata
 #  - sys.exit
 #  - subprocess
+#  - re
+#  - json
 #
 # Other dependencies:
 #  - mplayer (shell command)
@@ -34,8 +35,18 @@
 
 from __future__ import print_function
 from pprint import pprint
-from subprocess import call,PIPE
+from subprocess import call,PIPE,CalledProcessError
 from sys import exit,stdout
+import re, json, unicodedata
+
+# HTTP
+try:
+   # Py 2
+   import httplib
+except:
+   # Py 3
+   import http.client as httplib
+
 
 '''
     File name: Rac1.py
@@ -61,6 +72,19 @@ def isint(value):
       return True
    except:
       return False
+
+
+def normalize_encoding_upper(str):
+   '''Normalizes a string to an upper non-accents one'''
+   
+   try:
+      # Py 2
+      str = unicodedata.normalize('NFKD',str.decode('utf8')).encode('ascii', 'ignore').upper()
+   except:
+      # Py 3
+      str = unicodedata.normalize('NFKD',str).upper()
+   
+   return str
 
 
 def parse_my_args():
@@ -139,18 +163,11 @@ def parse_my_args():
    excludes = []
    if len(args.exclude) > 0:
       
-      import unicodedata
-      
       for exc in args.exclude:
          if isint(exc):
             excludes.append( exc )
          else:
-            try:
-               # Py 2
-               excludes.extend( unicodedata.normalize('NFKD',exc.decode('utf8')).encode('ascii', 'ignore').upper().split(',') )
-            except:
-               # Py 3
-               excludes.extend( unicodedata.normalize('NFKD',exc).upper().split(',') )
+            excludes.extend( normalize_encoding_upper(exc).split(',') )
    
    # L'afegim al args
    setattr(args, 'excludes', excludes)
@@ -172,35 +189,15 @@ def parse_my_date(date_arg):
    # Get date from string
    date = cal.parseDT(date_arg, now)[0]
    
-   # Return date parsed as DD-MM-YY
-   return date.strftime('%d-%m-%y')
+   # Return date parsed as DD-MM-YYYY
+   return date.strftime('%d/%m/%Y')
    
 
-def get_rac1_xml(date):
-   '''Download XML with podcasts feed and returns text/xml data into string'''
+def get_page(URL_HOST, URL_GET):
+   '''Downloads a page'''
    
-   # HTTP
-   try:
-      # Py 2
-      import httplib
-   except:
-      # Py 3
-      import http.client as httplib
-   
-   # TODO: Al tanto! Alternativa que parece funcionar mejor:
-   # wget -O - "http://www.rac1.cat/audioteca/a-la-carta/cerca?text=&sectionId=HOUR&from=24%2F07%2F2017&to=" | grep 'http://audio.rac1.cat'
-   # (echo '<xml>\n'; cat test; echo '</xml>' ) | egrep -v '<input|<i class|<iframe' | sed -e 's/\?source=WEB&download//g' | xml2
-   
-   # http://www.rac1.cat/audioteca/rss/el-mon/HOUR
-   
-   # {} must be in format DD-MM-YY
-   URL_HOST="www.racalacarta.com:80"
-   URL_GET="/wp-feeder.php?param={}&is_date=1&action=read_dir&limit=30"
-   
-   print("Descarreguem Feed XML del llistat de Podcasts amb data {}: {}{}".format(date, URL_HOST, URL_GET.format(date)))
-
    conn = httplib.HTTPConnection(URL_HOST)
-   conn.request("GET", URL_GET.format(date))
+   conn.request("GET", URL_GET)
    response = conn.getresponse()
    
    data = response.read()
@@ -214,48 +211,99 @@ def get_rac1_xml(date):
    return response.status, response.reason
 
 
-def print_xml_recursive(element, level=0):
-   '''Debug: Print XML object tree'''
+def get_rac1_page(date, page=0):
+   '''Download HTML with audio UUIDs'''
    
-   for child in element:
-      print("   " * level, '*', child.tag, child.attrib, child.text)
-      print_recursive(child, level=level + 1)
-
-
-def parse_my_xml(data):
-   '''Parse XML data and return podcasts list in hour ascending order'''
-
-   from xml.etree import ElementTree as ET
-
-   root = ET.fromstring(data)
-   #print_xml_recursive(root)
+   # TODO: Al tanto! Alternativa que parece funcionar mejor:
+   # wget -O - "http://www.rac1.cat/audioteca/a-la-carta/cerca?text=&sectionId=HOUR&from=24%2F07%2F2017&to=" | grep 'http://audio.rac1.cat'
+   # (echo '<xml>\n'; cat test; echo '</xml>' ) | egrep -v '<input|<i class|<iframe' | sed -e 's/\?source=WEB&download//g' | xml2
+   #
+   # wget -q -O - "http://www.rac1.cat/audioteca/a-la-carta/cerca?text=&programId=&sectionId=HOUR&from=24%2F09%2F2017&to=&pageNumber=0" | \
+   #    egrep 'data-audio-id|data-audioteca-search-page' | \
+   #    sed -e 's/^.* \(data-[^=]*\)="\([^"]*\)".*$/\1=\2/g'
    
-   list = []
-   for item in root.iter('item'):
+   # http://www.rac1.cat/audioteca/rss/el-mon/HOUR
    
-      # Get info from item childs
-      title = item.find('title').text
-      link = item.find('link').text
-      description = item.find('description').text
-      enclosure = item.find('enclosure')
+   # {} must be in format DD/MM/YYYY
+   URL_HOST="www.rac1.cat:80"
+   URL_GET="/audioteca/a-la-carta/cerca?text=&programId=&sectionId=HOUR&from={date}&to=&pageNumber={page}"
+   
+   print("Descarreguem Feed XML del llistat de Podcasts amb data {date}: {url}{get}".format(date=date, url=URL_HOST, get=URL_GET.format(date=date, page=page)))
+
+   return get_page(URL_HOST, URL_GET.format(date=date, page=page))
+
+
+def get_rac1_list_audio(date):
+   pass
+   
+
+def parse_rac1_data(data):
+   '''Parse Rac1 data and return podcasts list in hour ascending order'''
+
+   list = [ re.sub(rb'^.* (data-[^=]*)="([^"]*)".*$', rb'\1=\2', line )\
+              .decode('utf-8') 
+              for line in data.split(b'\n') 
+                 if b'data-audio-id' in line \
+                    or b'data-audioteca-search-page' in line ]
+   
+   audio_uuid_list = [ line for line in list if 'data-audio-id' in line ]
+   pages_list      = [ line for line in list if 'data-audioteca-search-page' in line ]
+   
+   return audio_uuid_list, pages_list
+
+
+def get_audio_uuids(date):
+   
+   status, data = get_rac1_page(date)
+   
+   if status != 200:
+      print("Error intentant descarregar el XML amb el llistat de podcasts: {}: {}".format(status, data))
+      exit(1)
+   
+   audio_uuid_list, pages_list = parse_rac1_data(data)
+   
+   # Get extra pages, if needed
+   # [1:] : remove first page, as it has already been downloaded
+   for page in pages_list[1:]:
       
-      # Separem la descripció en espais (Emis.: 03-07-17 a les 01h): split
-      # Agafem l'últim element (08h): [-1]
-      # Traiem l'últim char (08): [:-1]
-      hora = description.split(' ')[-1][:-1]
+      # Get page number
+      _, p = page.split('=')
       
-      # Append that info into the list
-      list.append(dict(
-         title=title.split('(')[0].strip(), 
-         link=link, 
-         description=description, 
-         length="{}".format(int(int(enclosure.attrib['length']) / 1024)),
-         hora=int(hora)
-      ))
+      # Download page uuids
+      status, data = get_rac1_page(date, p)
+      
+      if status != 200:
+         print("Error intentant descarregar el XML amb el llistat de podcasts: {}: {}".format(status, data))
+         exit(1)
+      
+      # Parse page data
+      audio_uuid_list_page, _ = parse_rac1_data(data)
+      
+      # Add audio UUIDs to the list
+      audio_uuid_list += audio_uuid_list_page
    
-   # Return the list in reverse order
-   return list[::-1]
+   # Return only each audio's UUID
+   return [ varval.split('=')[1] for varval in audio_uuid_list ]
 
+
+def get_podcast_data(uuid):
+   
+   URL_HOST="www.rac1.cat:80"
+   URL_GET="/audioteca/piece/audio?id={uuid}"
+   
+   status, data_raw = get_page(URL_HOST, URL_GET.format(uuid=uuid))
+
+   if status != 200:
+      print("Error intentant descarregar el JSON amb les dades del podcast: {}: {}".format(status, data_raw))
+      exit(1)
+   
+   data = json.loads(data_raw.decode('utf-8'))
+   
+   # Parse the hour
+   data['audio']['hour'] = int(data['audio']['time'].split(':')[0])
+   
+   return data
+   
 
 def get_podcasts_list(date):
    ''' 
@@ -266,16 +314,19 @@ def get_podcasts_list(date):
      - Parxe XML
    '''
    
-   # HTTP
-   status, data = get_rac1_xml(date)
+   # Get all day audio UUIDs
+   audio_uuid_list = get_audio_uuids(date)
    
-   if status != 200:
-      print("Error intentant descarregar el XML amb el llistat de podcasts: {}: {}".format(status, data))
-      exit(1)
+   podcasts_list = [ get_podcast_data(uuid) for uuid in audio_uuid_list ]
    
-   # XML
-   return parse_my_xml(data)
+   # DEBUG
+   #pprint([ [podcast['audio']['time'], podcast['path']] for podcast in podcasts_list ])
+   #pprint(podcasts_list)
+   #exit(0)
    
+   # Return the list in reverse order
+   return podcasts_list[::-1]
+
 
 mplayer_process = None
 def play_podcast(podcast, only_print=False, start='0'):
@@ -283,28 +334,29 @@ def play_podcast(podcast, only_print=False, start='0'):
    
    global mplayer_process
    
-   call_args = ["mplayer", "-cache-min", "1", "-cache", podcast['length'], "-ss", start, podcast['link']]
+   call_args = ["mplayer", "-cache-min", "1", "-cache", str(podcast['durationSeconds']), "-ss", start, podcast['path']]
    
    # Print?
    if only_print == True:
 
       # Add quotes to link argument
       print_args = call_args[:]
-      print_args[-1] = '"{}"'.format(podcast['link'])
+      print_args[-1] = '"{}"'.format(podcast['path'])
       
       print(*print_args, sep=" ")
       return
       
-   print('### Escoltem "{}" {}h: {}'.format(podcast['title'], podcast['hora'], podcast['link']))
+   print('### Escoltem "{}" {}h: {}'.format(podcast['audio']['title'], podcast['audio']['hour'], podcast['path']))
    
    # Posem el títol a l'intèrpret de comandes
-   print("\x1B]2;{} {}h\x07".format(podcast['title'], podcast['hora']))
+   print("\x1B]2;{} {}h\x07".format(podcast['audio']['title'], podcast['audio']['hour']))
    
    # Listen with mplayer
    # Use try to catch CTRL+C correctly
    try:
       mplayer_process = call(call_args)
-   except:
+   except CalledProcessError as e:
+      print("ERROR: " + e.output)
       exit(2)
    
    return 0
@@ -328,13 +380,13 @@ def play_all_podcasts(args, done_last=0):
       play = True
 
       # From and To hours
-      if not (args.from_hour <= podcast['hora'] <= args.to_hour):
+      if not (args.from_hour <= podcast['audio']['hour'] <= args.to_hour):
          play = False
 
       # Exclusions
       else:
          for exc in args.excludes:
-            if ( isint(exc) and int(exc) == podcast['hora'] ) or str(exc) in podcast['title'] :
+            if ( isint(exc) and int(exc) == podcast['audio']['hour'] ) or str(exc) in normalize_encoding_upper( podcast['audio']['title'] ) :
                play = False
                break
       
@@ -369,7 +421,7 @@ def signal_handler(sign, frame):
    if mplayer_process != None:
       print("Waiting for mplayer to finish...")
       
-      process = psutil.Process(mplayer_process.pid)
+      process = psutil.Process(mplayer_process)
       
       # Kill mplayer childs and wait for them to exit completely
       for proc in process.children(recursive=True):
@@ -394,7 +446,7 @@ if __name__ == "__main__":
    from os import fdopen
 
    signal(SIGINT, signal_handler)
-   stdout = fdopen(stdout.fileno(), 'w', 0)
+   #stdout = fdopen(stdout.fileno(), 'w', 0)
 
    # Parse ARGv
    args = parse_my_args()
