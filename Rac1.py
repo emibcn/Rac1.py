@@ -56,7 +56,7 @@ except:
     File name: Rac1.py
     Author: Emilio del Giorgio
     Date created: 4/7/2017
-    Date last modified: 24/9/2017
+    Date last modified: 8/12/2017
     Python Version: 3 / 2.7
 '''
 
@@ -395,7 +395,7 @@ def play_all_podcasts(args, done_last=0):
    # Get list of podcasts:
    #  - Using human readable dates (already parsed at parse_my_args)
    #  - From HTTP connection (done via get_podcasts_list)
-   #  - Parxe XML (done via get_podcasts_list)
+   #  - Parse XML (done via get_podcasts_list)
    podcasts = get_podcasts_list(args.date)[done_last:]
    
    #
@@ -409,7 +409,6 @@ def play_all_podcasts(args, done_last=0):
       # From and To hours
       if not (args.from_hour <= podcast['audio']['hour'] <= args.to_hour):
          play = False
-         continue
 
       # Exclusions
       else:
