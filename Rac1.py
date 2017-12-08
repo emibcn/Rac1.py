@@ -242,7 +242,7 @@ def get_rac1_page(date, page=0):
    URL_HOST="www.rac1.cat:80"
    URL_GET="/audioteca/a-la-carta/cerca?text=&programId=&sectionId=HOUR&from={date}&to=&pageNumber={page}"
    
-   print("Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {url}{get}".format(date=date, url=URL_HOST, get=URL_GET.format(date=date, page=page)))
+   print(u"Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {url}{get}".format(date=date, url=URL_HOST, get=URL_GET.format(date=date, page=page)))
    
    # Return downloaded page
    return get_page(URL_HOST, URL_GET.format(date=date, page=page))
@@ -277,7 +277,7 @@ def get_audio_uuids(date):
    status, data = get_rac1_page(date)
    
    if status != 200:
-      print("Error intentant descarregar la pàgina HTML amb el llistat de podcasts: {}: {}".format(status, data))
+      print(u"Error intentant descarregar la pàgina HTML amb el llistat de podcasts: {}: {}".format(status, data))
       exit(1)
    
    # Parse downloaded data, getting UUIDs initial list and pages list
@@ -294,7 +294,7 @@ def get_audio_uuids(date):
       status, data = get_rac1_page(date, p)
       
       if status != 200:
-         print("Error intentant descarregar la pàgina HTML amb el llistat de podcasts: {}: {}".format(status, data))
+         print(u"Error intentant descarregar la pàgina HTML amb el llistat de podcasts: {}: {}".format(status, data))
          exit(1)
       
       # Parse page data
@@ -317,7 +317,7 @@ def get_podcast_data(uuid):
    status, data_raw = get_page(URL_HOST, URL_GET.format(uuid=uuid))
 
    if status != 200:
-      print("Error intentant descarregar el JSON amb les dades del podcast: {}: {}".format(status, data_raw))
+      print(u"Error intentant descarregar el JSON amb les dades del podcast: {}: {}".format(status, data_raw))
       exit(1)
    
    # Parse JSON data
@@ -370,17 +370,17 @@ def play_podcast(podcast, only_print=False, start='0'):
       print(*print_args, sep=" ")
       return
       
-   print('### Escoltem "{}" {}h: {}'.format(podcast['audio']['title'], podcast['audio']['hour'], podcast['path']))
+   print(u'### Escoltem "{}" {}h: {}'.format(podcast['audio']['title'], podcast['audio']['hour'], podcast['path']))
    
    # Posem el títol a l'intèrpret de comandes
-   print("\x1B]2;{} {}h\x07".format(podcast['audio']['title'], podcast['audio']['hour']))
+   print(u"\x1B]2;{} {}h\x07".format(podcast['audio']['title'], podcast['audio']['hour']))
    
    # Listen with mplayer
    # Use try to catch CTRL+C correctly
    try:
       mplayer_process = call(call_args)
    except CalledProcessError as e:
-      print("ERROR: " + e.output)
+      print(u"ERROR: " + e.output)
       exit(2)
    
    return 0
@@ -445,7 +445,7 @@ def signal_handler(sign, frame):
    
    # Flush stdout and wait until mplayer exits completely
    stdout.flush()
-   print('CTRL-C!! Sortim!')
+   print(u'CTRL-C!! Sortim!')
    
    # Wait a second...
    import time
@@ -455,7 +455,7 @@ def signal_handler(sign, frame):
    
    # If mplayer process is defined
    if mplayer_process is not None:
-      print("Waiting for mplayer to finish...")
+      print(u"Waiting for mplayer to finish...")
       
       import psutil
       
@@ -463,9 +463,9 @@ def signal_handler(sign, frame):
          # Get process info
          process = psutil.Process(mplayer_process)
       except:
-         print("MPlayer already ended.")
+         print(u"MPlayer already ended.")
       else:
-         print("Killing MPlayer and all possible childs.")
+         print(u"Killing MPlayer and all possible childs.")
          
          # Kill mplayer childs and wait for them to exit completely
          for proc in process.children(recursive=True):
