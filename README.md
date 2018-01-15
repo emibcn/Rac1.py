@@ -77,4 +77,8 @@ Pots tirar endavant i endarrere amb les tecles:
 ./Rac1.py -d yesterday
 # Listen to the podcasts published last friday
 ./Rac1.py -d 'last friday'
+# List the podcasts URLs published last friday
+./Rac1.py -d 'last friday' -p
+# List the podcasts URLs published last friday beginning at 8:30am
+./Rac1.py -d 'last friday' -p -s 30:00
 ```
