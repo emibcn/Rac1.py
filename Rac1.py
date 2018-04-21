@@ -260,7 +260,7 @@ def get_rac1_page(date, page=0):
    # {date} must be in format DD/MM/YYYY
    URL_HOST="www.rac1.cat"
    URL_GET="/a-la-carta/cerca?text=&programId=&sectionId=HOUR&from={date}&to={date}&pageNumber={page}&btn-search="
-   
+
    print(u"Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {url}{get}".format(date=date, url=URL_HOST, get=URL_GET.format(date=date, page=page)))
    
    # Return downloaded page
@@ -328,7 +328,7 @@ def get_audio_uuids(date):
 
 def get_podcast_data(uuid):
    '''Download podcast information by its UUID'''
-   
+
    URL_HOST="api.audioteca.rac1.cat"
    URL_GET="/piece/audio?id={uuid}"
    
@@ -370,8 +370,54 @@ def get_podcasts_list(date):
    return podcasts_list[::-1]
 
 
+def filter_podcasts_list(podcasts, args):
+   '''Filters podcasts using args'''
+   
+   podcasts_filtered = []
+   
+   # Create date formatted as in downloaded podcast metainfo
+   date = '-'.join(args.date.split('/')[::-1])
+   
+   for podcast in podcasts:
+   
+      play = True
+
+      # From and To hours
+      #pprint(podcast['audio'])
+      if date != podcast['audio']['date']:
+         #print("NODATE: Filtering %s: '%s' != '%s'" % (podcast['audio']['title'], date, podcast['audio']['date']))
+         play = False
+      
+      if not (args.from_hour <= podcast['audio']['hour'] <= args.to_hour):
+         #print("NOHOUR: Filtering %s" % (podcast['audio']['title']))
+         play = False
+
+      # Exclusions
+      else:
+         for exc in args.excludes:
+            
+            # Exclude by hour and by name
+            if ( isint(exc) and int(exc) == podcast['audio']['hour'] ) or \
+                  str(exc) in normalize_encoding_upper( podcast['audio']['title'] ) :
+               play = False
+      
+      # Si l'hem d'escoltar
+      if play:
+
+         # Si és el primer, apliquem el FastForward inicial
+         if len(podcasts_filtered) == 0:
+            podcast['start'] = args.start_first
+         else:
+            podcast['start'] = 0
+         
+         podcasts_filtered.append(podcast)
+   
+   # Return filtred list
+   return podcasts_filtered
+   
+
 mplayer_process = None
-def play_podcast(podcast, only_print=False, start='0'):
+def play_podcast(podcast, only_print=False):
    '''Play a podcast with mplayer, or only print the command'''
    
    global mplayer_process
@@ -379,7 +425,7 @@ def play_podcast(podcast, only_print=False, start='0'):
    # Cache:
    #  - Try to play as soon as possible
    #  - Try to download full podcast from the beginning (full cache)
-   call_args = ["mplayer", "-cache-min", "1", "-cache", str(podcast['durationSeconds'] * 10), "-ss", str(start), podcast['path']]
+   call_args = ["mplayer", "-cache-min", "1", "-cache", str(podcast['durationSeconds'] * 10), "-ss", str(podcast['start']), podcast['path']]
    
    # Print?
    if only_print == True:
@@ -408,50 +454,21 @@ def play_podcast(podcast, only_print=False, start='0'):
    return 0
 
 
-def play_all_podcasts(args, done_last=0):
+def play_all_podcasts(podcasts, only_print=False):
    '''Play all podcasts from desired list using args. Returns number of podcasts played.'''
 
-   # Get list of podcasts:
-   #  - Using human readable dates (already parsed at parse_my_args)
-   #  - From HTTP connection (done via get_podcasts_list)
-   #  - Parse XML (done via get_podcasts_list)
-   podcasts = get_podcasts_list(args.date)[done_last:]
-   
    #
    # Iterate, filter and play podcasts list
    #
    done = 0
    for podcast in podcasts:
-   
-      play = True
-
-      # From and To hours
-      if not (args.from_hour <= podcast['audio']['hour'] <= args.to_hour):
-         play = False
-
-      # Exclusions
-      else:
-         for exc in args.excludes:
-            
-            # Exclude by hour and by name
-            if ( isint(exc) and int(exc) == podcast['audio']['hour'] ) or \
-                  str(exc) in normalize_encoding_upper( podcast['audio']['title'] ) :
-               play = False
-               break
+      play_podcast(podcast, only_print)
       
-      # Si l'hem d'escoltar
-      if play:
-         
-         # Si és el primer, apliquem el FastForward inicial
-         if (done + done_last) == 0:
-            play_podcast(podcast, only_print=args.only_print, start=args.start_first)
-         else:
-            play_podcast(podcast, only_print=args.only_print)
-         
       done += 1
    
    # Return podcasts done
    return done
+
 
 already_exiting = False
 def signal_handler(sign, frame):
@@ -524,10 +541,23 @@ if __name__ == "__main__":
    done_last = 0
    
    while True:
-      done = play_all_podcasts(args, done_last=done_last)
-      done_last += done
+      # Get list of podcasts:
+      #  - Using human readable dates (already parsed at parse_my_args)
+      #  - From HTTP connection (done via get_podcasts_list)
+      #  - Parse XML (done via get_podcasts_list)
+      podcasts = filter_podcasts_list(
+                      get_podcasts_list(args.date), 
+                      args)[done_last:]
+      
+      # If there is anything to play, do it
+      if len(podcasts) > 0:
+         done = play_all_podcasts(
+                   podcasts,
+                   args.only_print)
+         done_last += done
       
       # If we could not play anything, don't try to download 
       # the list again: there will be nothing, again
-      if done == 0:
+      else:
          exit(0)
+   
