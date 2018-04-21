@@ -55,16 +55,16 @@ except:
 '''
     File name: Rac1.py
     Author: Emilio del Giorgio
-    Date created: 4/7/2017
-    Date last modified: 8/12/2017
+    Date created: 2017/4/7
+    Date last modified: 2018/4/21
     Python Version: 3 / 2.7
 '''
 
 __author__ = "Emilio del Giorgio"
 __license__ = "GPL"
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __maintainer__ = __author__
-__email__ = "emidaruma@gmail.com"
+__email__ = "github.com/emibcn"
 __status__ = "Production"
 
 
