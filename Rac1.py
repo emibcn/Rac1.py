@@ -205,12 +205,23 @@ def parse_my_date(date_arg):
    return date.strftime('%d/%m/%Y')
    
 
-def get_page(URL_HOST, URL_GET):
+def get_page(URL_HOST, URL_GET, https=False):
    '''Downloads a page'''
    
    # Connect to server, send request and get response
-   conn = httplib.HTTPConnection(URL_HOST)
-   conn.request("GET", URL_GET)
+   if not https:
+      conn = httplib.HTTPConnection(URL_HOST)
+   else:
+      conn = httplib.HTTPSConnection(URL_HOST)
+      
+   headers = {
+      'User-Agent': "github.com/emibcn/Rac1.py",
+      'Cache-Control': 'max-age=0',
+      'Connection': 'keep-alive',
+      'DNT': '1',
+      'Upgrade-Insecure-Requests': '1',
+   }
+   conn.request("GET", URL_GET, None, headers)
    response = conn.getresponse()
    
    # Get data from response and close connection
@@ -221,8 +232,16 @@ def get_page(URL_HOST, URL_GET):
    if response.status == 200:
       return response.status, data
    
+   reason = response.reason
+   
+   if response.status in [300, 301, 302]:
+      location = response.getheader("Location")
+      
+      if len(location) > 0:
+         reason += ": %s" % (location)
+      
    # KO
-   return response.status, response.reason
+   return response.status, reason
 
 
 def get_rac1_page(date, page=0):
@@ -238,14 +257,14 @@ def get_rac1_page(date, page=0):
    
    # http://www.rac1.cat/audioteca/rss/el-mon/HOUR
    
-   # {} must be in format DD/MM/YYYY
-   URL_HOST="www.rac1.cat:80"
-   URL_GET="/audioteca/a-la-carta/cerca?text=&programId=&sectionId=HOUR&from={date}&to=&pageNumber={page}"
+   # {date} must be in format DD/MM/YYYY
+   URL_HOST="www.rac1.cat"
+   URL_GET="/a-la-carta/cerca?text=&programId=&sectionId=HOUR&from={date}&to={date}&pageNumber={page}&btn-search="
    
    print(u"Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {url}{get}".format(date=date, url=URL_HOST, get=URL_GET.format(date=date, page=page)))
    
    # Return downloaded page
-   return get_page(URL_HOST, URL_GET.format(date=date, page=page))
+   return get_page(URL_HOST, URL_GET.format(date=date, page=page), https=True)
 
 
 def parse_rac1_data(data):
@@ -310,11 +329,11 @@ def get_audio_uuids(date):
 def get_podcast_data(uuid):
    '''Download podcast information by its UUID'''
    
-   URL_HOST="www.rac1.cat:80"
-   URL_GET="/audioteca/piece/audio?id={uuid}"
+   URL_HOST="api.audioteca.rac1.cat"
+   URL_GET="/piece/audio?id={uuid}"
    
    # Download podcast JSON data
-   status, data_raw = get_page(URL_HOST, URL_GET.format(uuid=uuid))
+   status, data_raw = get_page(URL_HOST, URL_GET.format(uuid=uuid), https=True)
 
    if status != 200:
       print(u"Error intentant descarregar el JSON amb les dades del podcast: {}: {}".format(status, data_raw))
@@ -512,4 +531,3 @@ if __name__ == "__main__":
       # the list again: there will be nothing, again
       if done == 0:
          exit(0)
-   
