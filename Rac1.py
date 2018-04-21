@@ -334,7 +334,7 @@ class Rac1(object):
          # Add audio UUIDs to the list
          for uuid in audio_uuid_list_page:
             if uuid not in audio_uuid_list:
-               audio_uuid_list += uuid
+               audio_uuid_list.append(uuid)
       
       # Return only each audio's UUID
       return [ varval.split('=')[1] for varval in audio_uuid_list ]
