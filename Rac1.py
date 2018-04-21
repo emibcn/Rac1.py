@@ -379,7 +379,7 @@ def play_podcast(podcast, only_print=False, start='0'):
    # Cache:
    #  - Try to play as soon as possible
    #  - Try to download full podcast from the beginning (full cache)
-   call_args = ["mplayer", "-cache-min", "1", "-cache", str(podcast['durationSeconds'] * 10), "-ss", start, podcast['path']]
+   call_args = ["mplayer", "-cache-min", "1", "-cache", str(podcast['durationSeconds'] * 10), "-ss", str(start), podcast['path']]
    
    # Print?
    if only_print == True:
