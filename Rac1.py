@@ -285,8 +285,14 @@ def parse_rac1_data(data):
    audio_uuid_list = [ line for line in list if 'data-audio-id' in line ]
    pages_list      = [ line for line in list if 'data-audioteca-search-page' in line ]
    
+   # Deduply
+   audio_uuid_list_dedups = []
+   for uuid in audio_uuid_list:
+      if uuid not in audio_uuid_list_dedups:
+         audio_uuid_list_dedups.append(uuid)
+   
    # Return segregated lists
-   return audio_uuid_list, pages_list
+   return audio_uuid_list_dedups, pages_list
 
 
 def get_audio_uuids(date):
@@ -320,7 +326,9 @@ def get_audio_uuids(date):
       audio_uuid_list_page, _ = parse_rac1_data(data)
       
       # Add audio UUIDs to the list
-      audio_uuid_list += audio_uuid_list_page
+      for uuid in audio_uuid_list_page:
+         if uuid not in audio_uuid_list:
+            audio_uuid_list += uuid
    
    # Return only each audio's UUID
    return [ varval.split('=')[1] for varval in audio_uuid_list ]
