@@ -13,13 +13,13 @@ sudo apt install mplayer
 
 ### Using pip
 ```sh
-pip install -U https://github.com/emibcn/Rac1.py.git
+pip install -U --user https://github.com/emibcn/Rac1.py.git
 ```
 
 ### Using a virtualenv
 ```sh
 source bin/activate
-pip install -U https://github.com/emibcn/Rac1.py.git
+pip install -U --user https://github.com/emibcn/Rac1.py.git
 ```
 
 ## Known issues & TODO
