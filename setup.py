@@ -14,9 +14,8 @@ setup(
     url = "https://github.com/emibcn/Rac1.py",
     license = "GPLv3",
     platforms = ["any"],
-    packages = ['Rac1'],
-    py_modules=['Rac1.py'],
-    scripts = ["bin/Rac1.py"],
+    py_modules=['Rac1'],
+    scripts = ["bin/Rac1"],
     install_requires = ['requests', 'argparse', 'parsedatetime'],
     include_package_data = True,
     classifiers = [
