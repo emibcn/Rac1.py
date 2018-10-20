@@ -41,15 +41,7 @@ from __future__ import print_function
 from pprint import pprint
 from subprocess import call, PIPE, CalledProcessError
 from sys import exit,stdout
-import re, json, unicodedata
-
-# HTTP
-try:
-   # Py 2
-   import httplib
-except:
-   # Py 3
-   import http.client as httplib
+import re, json, unicodedata, requests
 
 
 '''
@@ -62,7 +54,7 @@ except:
 
 __author__ = "Emilio del Giorgio"
 __license__ = "GPL"
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 __maintainer__ = __author__
 __email__ = "github.com/emibcn"
 __status__ = "Production"
@@ -213,13 +205,7 @@ class Rac1(object):
    
    def get_page(self, URL_HOST, URL_GET, https=False):
       '''Downloads a page'''
-      
-      # Connect to server, send request and get response
-      if not https:
-         conn = httplib.HTTPConnection(URL_HOST)
-      else:
-         conn = httplib.HTTPSConnection(URL_HOST)
-         
+       
       headers = {
          'User-Agent': "github.com/emibcn/Rac1.py",
          'Cache-Control': 'max-age=0',
@@ -227,27 +213,13 @@ class Rac1(object):
          'DNT': '1',
          'Upgrade-Insecure-Requests': '1',
       }
-      conn.request("GET", URL_GET, None, headers)
-      response = conn.getresponse()
-      
-      # Get data from response and close connection
-      data = response.read()
-      conn.close()
-      
-      # OK
-      if response.status == 200:
-         return response.status, data
-      
-      reason = response.reason
-      
-      if response.status in [300, 301, 302]:
-         location = response.getheader("Location")
+
+      # Connect to server, send request and get response
+      r = requests.get(
+         'http{SECURE}://{SERVER}{PATH}'.format(SECURE=('s' if https else ''), SERVER=URL_HOST, PATH=URL_GET),
+         headers=headers)
          
-         if len(location) > 0:
-            reason += ": %s" % (location)
-         
-      # KO
-      return response.status, reason
+      return r.status_code, r.content
 
 
    def get_rac1_page(self, date, page=0):
@@ -526,8 +498,7 @@ class Rac1(object):
       
       exit(3)
 
-
-if __name__ == "__main__":
+def main():
    '''Parses arguments, gets podcasts list and play its items according to arguments'''
    
    # Borrow SIGINT to exit cleanly and disable stdout buffering
@@ -570,3 +541,5 @@ if __name__ == "__main__":
       else:
          exit(0)
    
+if __name__ == "__main__":
+    main()
