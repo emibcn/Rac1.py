@@ -19,7 +19,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Python Dependencies:
-#  - httplib/http.client
+#  - requests
 #  - argparse
 #  - parsedatetime
 #  - datetime
@@ -40,7 +40,7 @@
 from __future__ import print_function
 from pprint import pprint
 from subprocess import call, PIPE, CalledProcessError
-from sys import exit,stdout
+from sys import exit, stdout
 import re, json, unicodedata, requests
 
 
@@ -48,7 +48,7 @@ import re, json, unicodedata, requests
     File name: Rac1.py
     Author: Emilio del Giorgio
     Date created: 2017/4/7
-    Date last modified: 2018/4/21
+    Date last modified: 2018/10/20
     Python Version: 3 / 2.7
 '''
 
