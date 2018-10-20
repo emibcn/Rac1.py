@@ -1,5 +1,5 @@
 
-[![Build Status](https://travis-ci.com/emibcn/Rac1i.py.svg?branch=master)](https://travis-ci.com/emibcn/Rac1.py)
+[![Build Status](https://travis-ci.com/emibcn/Rac1.py.svg?branch=master)](https://travis-ci.com/emibcn/Rac1.py)
 
 # Rac1.py
 Small script to listen to Rac1 catalan radio station from its public podcasts.
