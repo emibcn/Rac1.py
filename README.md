@@ -5,7 +5,7 @@ Small script to listen to Rac1 catalan radio station from its public podcasts.
 Python 2 & 3
 
 ## Install
-Just need to install requirements. You can install some/all of them from your distro repos. You can also install it using pip/pip3, inside or not of a virtualenv. Also, it uses mplayer to play podcasts, so consider installing it using your distro repo manager. For example, for Debian/Ubuntu:
+Just need to install this package using `pip` or `pip3`. You can install it inside or not of a virtualenv. Also, it uses **mplayer** to play podcasts, so consider installing it using your distro repo manager. For example, for Debian/Ubuntu:
 
 ```sh
 sudo apt install mplayer
@@ -13,13 +13,13 @@ sudo apt install mplayer
 
 ### Using pip
 ```sh
-pip install -U -r requirements.txt
+pip install -U https://github.com/emibcn/Rac1.py.git
 ```
 
 ### Using a virtualenv
 ```sh
 source bin/activate
-pip install -U -r requirements.txt
+pip install -U https://github.com/emibcn/Rac1.py.git
 ```
 
 ## Known issues & TODO
@@ -72,13 +72,13 @@ Pots tirar endavant i endarrere amb les tecles:
 ## Examples
 ```
 # Listen to the podcasts published today
-./Rac1.py -d today
+Rac1.py -d today
 # Listen to the podcasts published yesterday
-./Rac1.py -d yesterday
+Rac1.py -d yesterday
 # Listen to the podcasts published last friday
-./Rac1.py -d 'last friday'
+Rac1.py -d 'last friday'
 # List the podcasts URLs published last friday
-./Rac1.py -d 'last friday' -p
+Rac1.py -d 'last friday' -p
 # List the podcasts URLs published last friday beginning at 8:30am
-./Rac1.py -d 'last friday' -p -s 30:00
+Rac1.py -d 'last friday' -p -s 30:00
 ```
