@@ -83,7 +83,7 @@ def normalize_encoding_upper(str):
    return str
 
 
-def parse_my_args():
+def parse_my_args(argv):
    '''Parse ARGv and return arg object'''
    
    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
@@ -150,7 +150,7 @@ def parse_my_args():
                        help="Neteja la llista d'exclusions definida fins el moment. No afecta posteriors entrades de '-x'.")
 
    # Parse arguments
-   args = parser.parse_args()
+   args = parser.parse_args(argv)
    
    # Normalize Date
    setattr(args, 'date', parse_my_date(args.date))
@@ -498,7 +498,7 @@ class Rac1(object):
       
       exit(3)
 
-def main():
+def main(argv=None):
    '''Parses arguments, gets podcasts list and play its items according to arguments'''
    
    # Borrow SIGINT to exit cleanly and disable stdout buffering
@@ -509,7 +509,7 @@ def main():
    #stdout = fdopen(stdout.fileno(), 'w', 0)
    
    # Parse ARGv
-   args = parse_my_args()
+   args = parse_my_args(argv)
    
    rac1 = Rac1()
    
