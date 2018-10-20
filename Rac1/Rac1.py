@@ -303,7 +303,7 @@ class Rac1(object):
          # Parse page data
          audio_uuid_list_page, _ = self.parse_rac1_data(data)
          
-         # Add audio UUIDs to the list
+         # Add audio UUIDs to the list if not already in the list
          for uuid in audio_uuid_list_page:
             if uuid not in audio_uuid_list:
                audio_uuid_list.append(uuid)
