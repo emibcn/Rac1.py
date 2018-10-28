@@ -4,6 +4,17 @@
 # Rac1.py
 Small script to listen to Rac1 catalan radio station from its public podcasts.
 
+# Index
+- [Compatibility](#compatibility)
+- [Install](#install)
+  - [Using pip only for user](#using-pip-only-for-user)
+  - [Using pip system wide](#using-pip-system-wide)
+  - [Download and install for development](#download-and-install-for-development)
+- [Known issues & TODO](#known-issues--todo)
+- [See also](#see-also)
+- [Script help (catalan)](#script-help-catalan)
+- [Examples](#examples)
+
 ## Compatibility
 Python 2 & 3
 
@@ -14,15 +25,26 @@ Just need to install this package using `pip` or `pip3`. You can install it insi
 sudo apt install mplayer
 ```
 
-### Using pip
+### Using pip only for user
 ```sh
 pip install -U --user https://github.com/emibcn/Rac1.py.git
 ```
 
-### Using a virtualenv
+### Using pip system wide
 ```sh
-source bin/activate
-pip install -U --user https://github.com/emibcn/Rac1.py.git
+pip install -U https://github.com/emibcn/Rac1.py.git
+```
+
+### Download and install for development
+```sh
+# Go to HOME directory (or where ever you want to download the project)
+cd
+
+# Download project
+git clone https://github.com/emibcn/Rac1.py.git
+
+# Install with `pip` with editable mode (i.e. setuptools "develop mode")
+pip install -U --user -e Rac1.py/
 ```
 
 ## Known issues & TODO
