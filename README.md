@@ -75,13 +75,17 @@ Pots tirar endavant i endarrere amb les tecles:
 ## Examples
 ```
 # Listen to the podcasts published today
-Rac1.py -d today
+Rac1 -d today
+
 # Listen to the podcasts published yesterday
-Rac1.py -d yesterday
+Rac1 -d yesterday
+
 # Listen to the podcasts published last friday
-Rac1.py -d 'last friday'
+Rac1 -d 'last friday'
+
 # List the podcasts URLs published last friday
-Rac1.py -d 'last friday' -p
+Rac1 -d 'last friday' -p
+
 # List the podcasts URLs published last friday beginning at 8:30am
-Rac1.py -d 'last friday' -p -s 30:00
+Rac1 -d 'last friday' -p -s 30:00
 ```
