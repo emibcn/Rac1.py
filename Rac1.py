@@ -19,7 +19,7 @@
 
 # Python Dependencies:
 #  - requests
-#  - argparse
+#  - configargparse
 #  - parsedatetime
 #  - datetime
 #  - unicodedata
@@ -56,7 +56,7 @@ import requests
 
 __author__ = "Emilio del Giorgio"
 __license__ = "GPL"
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 __maintainer__ = __author__
 __email__ = "github.com/emibcn"
 __status__ = "Production"
@@ -88,29 +88,42 @@ def normalize_encoding_upper(string):
 
 
 def parse_my_args(argv):
-    '''Parse ARGv and return arg object'''
+    '''Parse ARGv, `env` and config files, and return arg object'''
 
-    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
+    import configargparse
 
-    class MyCustomFormatter(ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter):
+    class MyCustomFormatter(
+            configargparse.ArgumentDefaultsHelpFormatter,
+            configargparse.RawDescriptionHelpFormatter):
         '''Permet mostrar l'epilog amb la llista ben formatada, mentre es
         mostren els arguments i els seus defaults formatats correctament
         https://stackoverflow.com/questions/18462610/argumentparser-epilog-and-description-formatting-in-conjunction-with-argumentdef
         '''
         pass
 
-    parser = ArgumentParser(
-        description="Escolta els podcasts de Rac1 sequencialment i sense interrupcions",
+    parser = configargparse.ArgParser(
+        description="Escolta els podcasts de Rac1 sequencialment i sense interrupcions.",
         formatter_class=MyCustomFormatter,
-        epilog="Nota: Mentre estàs escoltant un podcast, pots passar al següent\n"
-               "prement les tecles [ENTER] o [q].\n\n"
-               "Pots sortir del tot prement CTRL+C\n\n"
-               "Pots tirar endavant i endarrere amb les tecles:\n"
+        default_config_files=['/etc/Rac1/*.conf', '~/.Rac1', '~/.Rac1.*'],
+        epilog="Nota: Mentre estàs escoltant un podcast amb el `mplayer`:\n"
+               "- Pots passar al següent\n"
+               "- Prement les tecles [ENTER] o [q].\n\n"
+               "- Pots sortir del tot prement CTRL+C\n\n"
+               "- Pots tirar endavant i endarrere amb les tecles:\n"
+               "   - SHIFT amb tecles de direccions esquerra/dreta (5s)\n"
                "   - De direccions esquerra/dreta (10s)\n"
                "   - De direccions amunt/avall (1m)\n"
                "   - De Pàgina amunt/avall (10m)\n"
     )
 
+    parser.add_argument('-c', '--config',
+                        required=False,
+                        is_config_file=True,
+                        help='Camí al fitxer de configuració')
+    parser.add_argument('-w', '--write',
+                        required=False,
+                        is_write_out_config_file_arg=True,
+                        help='Desa els arguments al fitxer de configuració WRITE')
     parser.add_argument("-p", "--print",
                         dest='only_print',
                         default=False,
@@ -146,11 +159,11 @@ def parse_my_args(argv):
     parser.add_argument("-x", "--exclude",
                         dest='exclude',
                         metavar="EXCLUDE1[,EXCLUDE2...]",
-                        default=['SEGONA HORA,PRIMER TOC'],
+                        default=[],
                         action="append",
                         help=("Programes a excloure, per hora o nom, "
                               "separats per coma i/o en diverses aparicions de '-x'."))
-    parser.add_argument("-c", "--clean-exclude",
+    parser.add_argument("-l", "--clean-exclude",
                         dest='exclude',
                         action='store_const',
                         const=[],
@@ -163,7 +176,7 @@ def parse_my_args(argv):
     # Normalize Date
     setattr(args, 'date', parse_my_date(args.date))
 
-    # Normalize excludes: uppercase with no accents, splited by comma into one-dimensional array
+    # Normalize excludes: uppercase with no accents, splitted by comma into one-dimensional array
     excludes = []
     if len(args.exclude) > 0:
 
@@ -536,17 +549,18 @@ class Rac1(object):
                 process = psutil.Process(self.mplayer_process)
             except psutil.NoSuchProcess:
                 print(u"MPlayer already ended.")
-        else:
-            print(u"Killing MPlayer and all possible childs.")
 
-            # Kill mplayer childs and wait for them to exit completely
-            for proc in process.children(recursive=True):
-                proc.send_signal(signal.SIGTERM)
-                proc.wait()
+            if process:
+                print(u"Killing MPlayer and all possible childs.")
 
-            # Kill mplayer and wait for it to exit completely
-            process.send_signal(signal.SIGTERM)
-            process.wait()
+                # Kill mplayer childs and wait for them to exit completely
+                for proc in process.children(recursive=True):
+                    proc.send_signal(signal.SIGTERM)
+                    proc.wait()
+
+                # Kill mplayer and wait for it to exit completely
+                process.send_signal(signal.SIGTERM)
+                process.wait()
 
         # Reset terminal
         #subprocess.Popen(['reset']).wait()
@@ -557,8 +571,8 @@ def main(argv=None):
     '''Parses arguments, gets podcasts list and play its items according to arguments'''
 
     # Only Py2
-    #from os import fdopen
-    #sys.stdout = fdopen(sys.stdout.fileno(), 'w', 0)
+    #import os
+    #sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
     # Parse ARGv
     args = parse_my_args(argv)
