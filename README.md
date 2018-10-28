@@ -53,19 +53,31 @@ download plain HTML to get a paginated list of the audios published on a
 date. It's not optimal (it would be better to call an API URL to get this
 as a JSON list), but it's functional.
 
+### Arguments, environment and config files
+I've recently switched from ArgParser (popular arguments parsing) to ConfigArgParse, which extends
+ArgParser to support config file parsing and environment variables too. This library works mostly well,
+but still have some incoherences. For example, if you define some excludes at your config file and
+declare some other via arguments, you will expect all of them to be there. Instead of that, it
+overwrites the config file excludes with the arguments ones.
+
 ## See also
 [Joan Domingo's - Podcasts-RAC1-Android](https://github.com/joan-domingo/Podcasts-RAC1-Android)
 
 ## Script help (catalan)
 
 ```
-Usage: Rac1.py [-h] [-p] [-d DATE] [-f FROM] [-t TO] [-s START]
-               [-x EXCLUDE1[,EXCLUDE2...]] [-c]
+usage: Rac1 [-h] [-c CONFIG] [-w WRITE] [-p] [-d DATE] [-f FROM] [-t TO]
+            [-s START] [-x EXCLUDE1[,EXCLUDE2...]] [-l]
 
-Escolta els podcasts de Rac1 sequencialment i sense interrupcions
+Escolta els podcasts de Rac1 sequencialment i sense interrupcions. Args that start with '--' (eg. -p) can also be set in a config file (/etc/Rac1/*.conf or ~/.Rac1 or ~/.Rac1.* or specified via -c). Config file syntax allows: key=value, flag=true, stuff=[a,b,c] (for details, see syntax at https://goo.gl/R74nmi). If an arg is specified in more than one place, then commandline values override config file values which override defaults.
 
 optional arguments:
   -h, --help            show this help message and exit
+  -c CONFIG, --config CONFIG
+                        Camí al fitxer de configuració (default: None)
+  -w WRITE, --write WRITE
+                        Desa els arguments al fitxer de configuració WRITE
+                        (default: None)
   -p, --print           Només mostra el que s'executaria. (default: False)
   -d DATE, --date DATE  El dia del que es vol escoltar els podcasts. (default:
                         today)
@@ -78,26 +90,26 @@ optional arguments:
                         el format de l'opció '-ss' del mplayer. (default: 0)
   -x EXCLUDE1[,EXCLUDE2...], --exclude EXCLUDE1[,EXCLUDE2...]
                         Programes a excloure, per hora o nom, separats per
-                        coma i/o en diverses aparicions de '-x'. (default:
-                        ['SEGONA HORA,PRIMER TOC'])
-  -c, --clean-exclude   Neteja la llista d'exclusions definida fins el moment.
+                        coma i/o en diverses aparicions de '-x'. (default: [])
+  -l, --clean-exclude   Neteja la llista d'exclusions definida fins el moment.
                         No afecta posteriors entrades de '-x'. (default: None)
 
-Nota: Mentre estàs escoltant un podcast, pots passar al següent
-prement les tecles [ENTER] o [q].
-
-Pots sortir del tot prement CTRL+C
-
-Pots tirar endavant i endarrere amb les tecles:
+Nota: Mentre estàs escoltant un podcast amb el `mplayer`:
+- Pots passar al següent
+- Prement les tecles [ENTER] o [q].
+- Pots sortir del tot prement CTRL+C
+- Pots tirar endavant i endarrere amb les tecles:
+   - SHIFT amb tecles de direccions esquerra/dreta (5s)
    - De direccions esquerra/dreta (10s)
    - De direccions amunt/avall (1m)
    - De Pàgina amunt/avall (10m)
+
 ```
 
 ## Examples
 ```
 # Listen to the podcasts published today
-Rac1 -d today
+Rac1
 
 # Listen to the podcasts published yesterday
 Rac1 -d yesterday
@@ -110,4 +122,22 @@ Rac1 -d 'last friday' -p
 
 # List the podcasts URLs published last friday beginning at 8:30am
 Rac1 -d 'last friday' -p -s 30:00
+
+# Save to default config file the options:
+# - Listen to the podcasts published yesterday
+# - From 7 to 17h
+# - Excluding programs whith name containing 'ESPANYOL JUGA'
+Rac1 -d yesterday -f 7 -t 17 -x 'ESPANYOL JUGA' -w ~/.Rac1
+
+# I don't like futbol in general, so my defaults are:
+Rac1 -f 8 -t 14 -x 'JUGA A RAC','TU DIRAS','PRIMER TOC' -w ~/.Rac1
+
+# And that creates a configuration file with the following contents:
+```
+```
+from = 8
+to = 14
+exclude = [JUGA A RAC,TU DIRAS,PRIMER TOC]
+date = today
+
 ```
