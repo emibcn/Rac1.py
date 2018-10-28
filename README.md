@@ -15,7 +15,7 @@ Small script to listen to Rac1 catalan radio station from its public podcasts.
 - [See also](#see-also)
 - [Script help (catalan)](#script-help-catalan)
 - [Examples](#examples)
-  - [Using Rac1.py as a library](#using-rac1-py-as-a-library)
+  - [Using Rac1.py as a library](#using-rac1py-as-a-library)
     - [Using `vlc` instead of `mplayer`](#using-vlc-instead-of-mplayer)
 
 ## Compatibility
@@ -110,7 +110,7 @@ Nota: Mentre estàs escoltant un podcast amb el `mplayer`:
 ```
 
 ## Examples
-```
+```sh
 # Listen to the podcasts published today
 Rac1
 
@@ -131,12 +131,18 @@ Rac1 -d 'last friday' -p -s 30:00
 # - From 7 to 17h
 # - Excluding programs whith name containing 'ESPANYOL JUGA'
 Rac1 -d yesterday -f 7 -t 17 -x 'ESPANYOL JUGA' -w ~/.Rac1
+```
 
-# I don't like futbol in general, so my defaults are:
+I don't like futbol in general, so my defaults are:
+
+```sh
 Rac1 -f 8 -t 14 -x 'JUGA A RAC','TU DIRAS','PRIMER TOC' -w ~/.Rac1
 
-# And that creates a configuration file with the following contents:
 ```
+
+And that creates a configuration file with the following contents:
+
+
 ```
 from = 8
 to = 14
@@ -157,11 +163,19 @@ class MyRac1(Rac1.Rac1):
 
     @classmethod
     def play_podcast_mplayer_call_args(cls, podcast):
+
+        # Parse seconds for dumb vlc
+        time_list = str(podcast['start']).split(':')
+        seconds = 0
+        while len(time_list):
+            unit = int(time_list.pop(0))
+            seconds = (60 * seconds) + unit
+
         return [
             "vlc",
             "--play-and-exit",
             "--file-caching", str(podcast['durationSeconds'] * 10),
-            "--start-time", str(podcast['start']),
+            "--start-time", str(seconds),
             podcast['path']
         ]
 
