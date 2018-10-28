@@ -15,6 +15,8 @@ Small script to listen to Rac1 catalan radio station from its public podcasts.
 - [See also](#see-also)
 - [Script help (catalan)](#script-help-catalan)
 - [Examples](#examples)
+  - [Using Rac1.py as a library](#using-rac1-py-as-a-library)
+    - [Using `vlc` instead of `mplayer`](#using-vlc-instead-of-mplayer)
 
 ## Compatibility
 Python 2 & 3
@@ -141,4 +143,27 @@ to = 14
 exclude = [JUGA A RAC,TU DIRAS,PRIMER TOC]
 date = today
 
+```
+
+### Using Rac1.py as a library
+There are multiple ways you can re-use this library:
+
+#### Using `vlc` instead of `mplayer`
+If you want to use `vlc` instead of `mplayer`, you can extend `Rac1.py`:
+```python
+import Rac1
+
+class MyRac1(Rac1.Rac1):
+
+    @classmethod
+    def play_podcast_mplayer_call_args(cls, podcast):
+        return [
+            "vlc",
+            "--play-and-exit",
+            "--file-caching", str(podcast['durationSeconds'] * 10),
+            "--start-time", str(podcast['start']),
+            podcast['path']
+        ]
+
+exit(Rac1.main(rac1_class=MyRac1))
 ```
