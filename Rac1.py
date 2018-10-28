@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 '''Rac1.py: listen to Rac1 catalan radio station from its public podcasts'''
 
 #    Copyright (C) 2017  Emilio del Giorgio
@@ -44,6 +45,7 @@ import re
 import json
 import unicodedata
 import requests
+import configargparse
 
 
 '''
@@ -87,10 +89,8 @@ def normalize_encoding_upper(string):
     return string
 
 
-def parse_my_args(argv):
+def parse_args(argv):
     '''Parse ARGv, `env` and config files, and return arg object'''
-
-    import configargparse
 
     class MyCustomFormatter(
             configargparse.ArgumentDefaultsHelpFormatter,
@@ -174,7 +174,7 @@ def parse_my_args(argv):
     args = parser.parse_args(argv)
 
     # Normalize Date
-    setattr(args, 'date', parse_my_date(args.date))
+    setattr(args, 'date', parse_date(args.date))
 
     # Normalize excludes: uppercase with no accents, splitted by comma into one-dimensional array
     excludes = []
@@ -197,7 +197,7 @@ def parse_my_args(argv):
     return args
 
 
-def parse_my_date(date_arg):
+def parse_date(date_arg):
     '''Parse date and return a DD/MM/YYYY string'''
 
     # Can parse human-like dates, like 'date' command
@@ -218,14 +218,47 @@ def parse_my_date(date_arg):
     return date.strftime('%d/%m/%Y')
 
 
+class ExceptionDownloading(Exception):
+    '''Error trying to download a page'''
+    def __init__(self, message):
+        self.message = message
+        super(ExceptionDownloading, self).__init__(message)
+
+    def __str__(self):
+        return self.message
+
+
+class ExceptionMPlayer(Exception):
+    '''Error executing MPlayer'''
+    def __init__(self, message):
+        self.message = message
+        super(ExceptionMPlayer, self).__init__(message)
+
+    def __str__(self):
+        return self.message
+
+
 class Rac1(object):
     '''Class to interact to Rac1 podcasts backend API'''
 
     mplayer_process = None
     process_already_exiting = False
+    args = configargparse.Namespace(
+        date='today',
+        from_hour='8',
+        to_hour='14',
+        excludes=[],
+        start_first=0,
+        only_print=False,
+    )
 
 
-    def get_page(self, host, path, https=False):
+    def __init__(self, args=args):
+        self.args = args
+
+
+    @classmethod
+    def get_page(cls, host, path, https=False):
         '''Downloads a page'''
 
         headers = {
@@ -236,7 +269,7 @@ class Rac1(object):
             'Upgrade-Insecure-Requests': '1',
         }
 
-        # Connect to server, send request and get response
+        # Connect to server, send request and get response (and follow 3XX)
         req = requests.get(
             'http{SECURE}://{SERVER}{PATH}'.format(
                 SECURE=('s' if https else ''),
@@ -247,7 +280,7 @@ class Rac1(object):
         return req.status_code, req.content
 
 
-    def get_rac1_page(self, date, page=0):
+    def get_rac1_list_page(self, date, page=0):
         '''Download HTML with audio UUIDs'''
 
         # Al tanto! Alternativa que parece funcionar mejor:
@@ -277,7 +310,7 @@ class Rac1(object):
                 "pageNumber={page}&"
                 "btn-search=")
 
-        print(u"Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {host}{path}" \
+        print(u"### Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {host}{path}" \
               .format(
                   date=date,
                   host=host,
@@ -287,10 +320,22 @@ class Rac1(object):
                   )))
 
         # Return downloaded page
-        return self.get_page(host, path.format(date=date, page=page), https=True)
+        status, data = self.get_page(host, path.format(date=date, page=page), https=True)
+
+        if status != 200:
+            raise ExceptionDownloading(
+                (u"Error intentant descarregar la pàgina HTML "
+                 "amb el llistat de podcasts: {status}: {data}") \
+                  .format(
+                      status=status,
+                      data=data
+                  ))
+
+        return data
 
 
-    def parse_rac1_data(self, data):
+    @classmethod
+    def parse_rac1_data(cls, data):
         '''Parse Rac1 data and return podcasts list in hour ascending order'''
 
         my_re = re.compile(r'^.* (data-[^=]*)="([^"]*)".*$')
@@ -322,15 +367,7 @@ class Rac1(object):
         '''Get full day audio UUIDs list'''
 
         # Download date's first page
-        status, data = self.get_rac1_page(date)
-
-        if status != 200:
-            print(u"Error intentant descarregar la pàgina HTML amb el llistat de podcasts: {}: {}" \
-                  .format(
-                      status,
-                      data
-                  ))
-            exit(1)
+        data = self.get_rac1_list_page(date)
 
         # Parse downloaded data, getting UUIDs initial list and pages list
         audio_uuid_list, pages_list = self.parse_rac1_data(data)
@@ -339,22 +376,13 @@ class Rac1(object):
         # [1:] : remove first page, as it has already been downloaded
         for page in pages_list[1:]:
 
-            # Get page number
+            # Get page number (discard variable name)
             _, page_number = page.split('=')
 
             # Download page uuids
-            status, data = self.get_rac1_page(date, page_number)
+            data = self.get_rac1_list_page(date, page_number)
 
-            if status != 200:
-                print((u"Error intentant descarregar la pàgina HTML "
-                       "amb el llistat de podcasts: {}: {}") \
-                      .format(
-                          status,
-                          data
-                      ))
-                exit(1)
-
-            # Parse page data
+            # Parse page data (discard pages list, as we already have it)
             audio_uuid_list_page, _ = self.parse_rac1_data(data)
 
             # Add audio UUIDs to the list if not already in the list
@@ -376,12 +404,12 @@ class Rac1(object):
         status, data_raw = self.get_page(host, path.format(uuid=uuid), https=True)
 
         if status != 200:
-            print(u"Error intentant descarregar el JSON amb les dades del podcast: {}: {}" \
+            raise ExceptionDownloading(
+                u"Error intentant descarregar el JSON amb les dades del podcast: {status}: {data}" \
                   .format(
-                      status,
-                      data_raw
+                      status=status,
+                      data=data_raw
                   ))
-            exit(1)
 
         # Parse JSON data
         data = json.loads(data_raw.decode('utf-8'))
@@ -414,13 +442,13 @@ class Rac1(object):
         return podcasts_list[::-1]
 
 
-    def filter_podcasts_list(self, podcasts, args):
+    def filter_podcasts_list(self, podcasts):
         '''Filters podcasts using args'''
 
         podcasts_filtered = []
 
         # Create date formatted as in downloaded podcast metainfo
-        date = '-'.join(args.date.split('/')[::-1])
+        date = '-'.join(self.args.date.split('/')[::-1])
 
         for podcast in podcasts:
 
@@ -433,13 +461,13 @@ class Rac1(object):
                 #    (podcast['audio']['title'], date, podcast['audio']['date']))
                 play = False
 
-            if not args.from_hour <= podcast['audio']['hour'] <= args.to_hour:
+            if not self.args.from_hour <= podcast['audio']['hour'] <= self.args.to_hour:
                 #print("NOHOUR: Filtering %s" % (podcast['audio']['title']))
                 play = False
 
             # Exclusions
             else:
-                for exc in args.excludes:
+                for exc in self.args.excludes:
 
                     # Exclude by hour and by name
                     if (isint(exc) and int(exc) == podcast['audio']['hour']) or \
@@ -451,7 +479,7 @@ class Rac1(object):
 
                 # Si és el primer, apliquem el FastForward inicial
                 if len(podcasts_filtered) == 0:
-                    podcast['start'] = args.start_first
+                    podcast['start'] = self.args.start_first
                 else:
                     podcast['start'] = 0
 
@@ -461,20 +489,28 @@ class Rac1(object):
         return podcasts_filtered
 
 
-    def play_podcast(self, podcast, only_print=False):
-        '''Play a podcast with mplayer, or only print the command'''
+    @classmethod
+    def play_podcast_mplayer_call_args(cls, podcast):
+        '''Creates the calling array for playing a podcast with MPlayer'''
 
         # Cache:
         #  - Try to play as soon as possible
         #  - Try to download full podcast from the beginning (full cache)
-        call_args = [
+        return [
             "mplayer",
             "-cache-min", "1",
             "-cache", str(podcast['durationSeconds'] * 10),
-            "-ss", str(podcast['start']), podcast['path']]
+            "-ss", str(podcast['start']),
+            podcast['path']
+        ]
+
+    def play_podcast(self, podcast):
+        '''Play a podcast with mplayer, or only print the command'''
+
+        call_args = self.play_podcast_mplayer_call_args(podcast)
 
         # Print?
-        if only_print:
+        if self.args.only_print:
 
             # Add quotes to link argument
             print_args = call_args[:]
@@ -499,21 +535,18 @@ class Rac1(object):
         try:
             self.mplayer_process = call(call_args)
         except CalledProcessError as exc:
-            print(u"ERROR: " + exc.output)
-            exit(2)
+            raise ExceptionMPlayer(u"ERROR amb MPlayer: {error}".format(error=exc.output))
 
         return 0
 
 
-    def play_all_podcasts(self, podcasts, only_print=False):
+    def play_podcasts_list(self, podcasts):
         '''Play all podcasts from desired list using args. Returns number of podcasts played.'''
 
-        #
         # Iterate, filter and play podcasts list
-        #
         done = 0
         for podcast in podcasts:
-            self.play_podcast(podcast, only_print)
+            self.play_podcast(podcast)
 
             done += 1
 
@@ -521,7 +554,7 @@ class Rac1(object):
         return done
 
 
-    def signal_handler(self, sign, frame):
+    def signal_handler(self, sign, *_): # Unused frame argument
         '''Exits cleanly'''
 
         # Don't begin exit process more than once
@@ -532,7 +565,7 @@ class Rac1(object):
 
         # Flush stdout and wait until mplayer exits completely
         sys.stdout.flush()
-        print(u'CTRL-C!! Sortim!')
+        print(u'CTRL-C!! Sortim! ({signal})'.format(signal=sign))
 
         # Wait a second...
         import time
@@ -547,10 +580,7 @@ class Rac1(object):
             try:
                 # Get process info
                 process = psutil.Process(self.mplayer_process)
-            except psutil.NoSuchProcess:
-                print(u"MPlayer already ended.")
 
-            if process:
                 print(u"Killing MPlayer and all possible childs.")
 
                 # Kill mplayer childs and wait for them to exit completely
@@ -562,12 +592,16 @@ class Rac1(object):
                 process.send_signal(signal.SIGTERM)
                 process.wait()
 
+            except psutil.NoSuchProcess:
+                print(u"MPlayer already ended.")
+
         # Reset terminal
         #subprocess.Popen(['reset']).wait()
 
+        # If we are handling signal, we can exit program
         exit(3)
 
-def main(argv=None):
+def main(argv=None, rac1_class=Rac1):
     '''Parses arguments, gets podcasts list and play its items according to arguments'''
 
     # Only Py2
@@ -575,9 +609,9 @@ def main(argv=None):
     #sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
     # Parse ARGv
-    args = parse_my_args(argv)
+    args = parse_args(argv)
 
-    rac1 = Rac1()
+    rac1 = rac1_class(args=args)
 
     # Borrow SIGINT to exit cleanly and disable stdout buffering
     signal.signal(signal.SIGINT, rac1.signal_handler)
@@ -592,21 +626,36 @@ def main(argv=None):
         #  - Using human readable dates (already parsed at parse_my_args)
         #  - From HTTP connection (done via get_podcasts_list)
         #  - Parse XML (done via get_podcasts_list)
-        podcasts = rac1.filter_podcasts_list(
-            rac1.get_podcasts_list(args.date),
-            args)[done_last:]
+        try:
+            podcasts = rac1.filter_podcasts_list(
+                rac1.get_podcasts_list(args.date)
+            )[done_last:]
+
+        # Exit with error return value 1 on error downloading
+        except ExceptionDownloading as exc:
+            print(exc)
+            return 1
 
         # If there is anything to play, do it
         if len(podcasts) > 0:
-            done = rac1.play_all_podcasts(
-                podcasts,
-                args.only_print)
-            done_last += done
+            try:
+                done_last += rac1.play_podcasts_list(podcasts)
 
-        # If we could not play anything, don't try to download
+            # Exit with error return value 2 on error playing
+            except ExceptionMPlayer as exc:
+                print(exc)
+                return 2
+
+        # If we couldn't play anything, don't try to download
         # the list again: there will be nothing, again
         else:
-            exit(0)
+            break
+
+        # If we are only printing URLs (again, we played nothing), stop trying, too
+        if args.only_print:
+            break
+
+    return 0
 
 if __name__ == "__main__":
-    main()
+    exit(main())
