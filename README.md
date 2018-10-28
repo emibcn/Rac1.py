@@ -11,6 +11,7 @@ Small script to listen to Rac1 catalan radio station from its public podcasts.
   - [Using pip system wide](#using-pip-system-wide)
   - [Download and install for development](#download-and-install-for-development)
 - [Known issues & TODO](#known-issues--todo)
+  - [Arguments, environment and config files](#arguments-environment-and-config-files)
 - [See also](#see-also)
 - [Script help (catalan)](#script-help-catalan)
 - [Examples](#examples)
@@ -56,9 +57,9 @@ as a JSON list), but it's functional.
 ### Arguments, environment and config files
 I've recently switched from ArgParser (popular arguments parsing) to ConfigArgParse, which extends
 ArgParser to support config file parsing and environment variables too. This library works mostly well,
-but still have some incoherences. For example, if you define some excludes at your config file and
-declare some other via arguments, you will expect all of them to be there. Instead of that, it
-overwrites the config file excludes with the arguments ones.
+but still have some inconsistencies. For example, if you define some excludes at your config file and
+declare some other via arguments, you will expect all of them to be together. Instead of that, it
+overwrites the config file excludes with the arguments ones (sic).
 
 ## See also
 [Joan Domingo's - Podcasts-RAC1-Android](https://github.com/joan-domingo/Podcasts-RAC1-Android)
