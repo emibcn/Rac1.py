@@ -75,13 +75,15 @@ def isint(value):
 
 
 def normalize_encoding_upper(string):
-    '''Normalizes a binary string to an upper non-accented one'''
+    '''Normalizes a unicode string to an upper non-accented one'''
 
     try:
+
         # Py 2
-        string = unicodedata.normalize('NFKD', string.decode('utf8')) \
+        string = unicodedata.normalize('NFKD', string) \
             .encode('ascii', 'ignore') \
             .upper()
+
     except AttributeError:
         # Py 3
         string = unicodedata.normalize('NFKD', string).upper()
@@ -188,7 +190,15 @@ def parse_args(argv):
 
             # Exclude by name
             else:
-                excludes.extend(normalize_encoding_upper(exc).split(','))
+
+                # We're treating file input data here
+                # We must take care of it's encoding here
+                try:
+                    unicode(b'')
+                except NameError: # Py3: nothing to do
+                    excludes.extend(normalize_encoding_upper(exc).split(b','))
+                else: # Py2: Get Unicode string decoding from UTF8
+                    excludes.extend(normalize_encoding_upper(exc.decode('utf-8')).split(u','))
 
     # Add excludes to parsed arguments object
     setattr(args, 'excludes', excludes)
@@ -220,6 +230,7 @@ def parse_date(date_arg):
 
 class ExceptionDownloading(Exception):
     '''Error trying to download a page'''
+
     def __init__(self, message):
         self.message = message
         super(ExceptionDownloading, self).__init__(message)
@@ -230,6 +241,7 @@ class ExceptionDownloading(Exception):
 
 class ExceptionMPlayer(Exception):
     '''Error executing MPlayer'''
+
     def __init__(self, message):
         self.message = message
         super(ExceptionMPlayer, self).__init__(message)
@@ -277,7 +289,7 @@ class Rac1(object):
                 PATH=path),
             headers=headers)
 
-        return req.status_code, req.content
+        return req.status_code, req.text
 
 
     def get_rac1_list_page(self, date, page=0):
@@ -335,7 +347,7 @@ class Rac1(object):
 
 
     @classmethod
-    def parse_rac1_data(cls, data):
+    def parse_rac1_list_page(cls, data):
         '''Parse Rac1 data and return podcasts list in hour ascending order'''
 
         my_re = re.compile(r'^.* (data-[^=]*)="([^"]*)".*$')
@@ -344,14 +356,14 @@ class Rac1(object):
         # - Filter lines containing data-audio-id or data-audioteca-search-page
         # - Decode from binary utf-8 to string
         # - Only get values for data-* HTML attributes, without quotes
-        data_list = [re.sub(my_re, r'\1=\2', line.decode('utf-8')) \
-                 for line in data.split(b'\n')
-                     if b'data-audio-id' in line \
-                         or b'data-audioteca-search-page' in line]
+        data_list = [re.sub(my_re, r'\1=\2', line) \
+                 for line in data.split(u'\n')
+                     if u'data-audio-id' in line \
+                         or u'data-audioteca-search-page' in line]
 
         # Filter results by type
-        audio_uuid_list = [line for line in data_list if 'data-audio-id' in line]
-        pages_list = [line for line in data_list if 'data-audioteca-search-page' in line]
+        audio_uuid_list = [line for line in data_list if u'data-audio-id' in line]
+        pages_list = [line for line in data_list if u'data-audioteca-search-page' in line]
 
         # Deduply
         audio_uuid_list_dedups = []
@@ -370,28 +382,28 @@ class Rac1(object):
         data = self.get_rac1_list_page(date)
 
         # Parse downloaded data, getting UUIDs initial list and pages list
-        audio_uuid_list, pages_list = self.parse_rac1_data(data)
+        audio_uuid_list, pages_list = self.parse_rac1_list_page(data)
 
         # Get extra pages, if needed
         # [1:] : remove first page, as it has already been downloaded
         for page in pages_list[1:]:
 
             # Get page number (discard variable name)
-            _, page_number = page.split('=')
+            _, page_number = page.split(u'=')
 
             # Download page uuids
             data = self.get_rac1_list_page(date, page_number)
 
             # Parse page data (discard pages list, as we already have it)
-            audio_uuid_list_page, _ = self.parse_rac1_data(data)
+            audio_uuid_list_page, _ = self.parse_rac1_list_page(data)
 
             # Add audio UUIDs to the list if not already in the list
             for uuid in audio_uuid_list_page:
                 if uuid not in audio_uuid_list:
                     audio_uuid_list.append(uuid)
 
-        # Return only each audio's UUID
-        return [varval.split('=')[1] for varval in audio_uuid_list]
+        # Return only each audio's UUID (discard variable name)
+        return [varval.split(u'=')[1] for varval in audio_uuid_list]
 
 
     def get_podcast_data(self, uuid):
@@ -412,10 +424,10 @@ class Rac1(object):
                   ))
 
         # Parse JSON data
-        data = json.loads(data_raw.decode('utf-8'))
+        data = json.loads(data_raw)
 
         # Parse the hour
-        data['audio']['hour'] = int(data['audio']['time'].split(':')[0])
+        data['audio']['hour'] = int(data['audio']['time'].split(u':')[0])
 
         # Return parsed data
         return data
@@ -448,7 +460,7 @@ class Rac1(object):
         podcasts_filtered = []
 
         # Create date formatted as in downloaded podcast metainfo
-        date = '-'.join(self.args.date.split('/')[::-1])
+        date = u'-'.join(self.args.date.split(u'/')[::-1])
 
         for podcast in podcasts:
 
@@ -471,7 +483,7 @@ class Rac1(object):
 
                     # Exclude by hour and by name
                     if (isint(exc) and int(exc) == podcast['audio']['hour']) or \
-                         str(exc) in normalize_encoding_upper(podcast['audio']['title']):
+                         exc in normalize_encoding_upper(podcast['audio']['title']):
                         play = False
 
             # Si l'hem d'escoltar
@@ -503,6 +515,7 @@ class Rac1(object):
             "-ss", str(podcast['start']),
             podcast['path']
         ]
+
 
     def play_podcast(self, podcast):
         '''Play a podcast with mplayer, or only print the command'''
@@ -536,8 +549,6 @@ class Rac1(object):
             self.mplayer_process = call(call_args)
         except CalledProcessError as exc:
             raise ExceptionMPlayer(u"ERROR amb MPlayer: {error}".format(error=exc.output))
-
-        return 0
 
 
     def play_podcasts_list(self, podcasts):
