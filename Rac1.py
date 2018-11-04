@@ -38,7 +38,7 @@
 #
 
 from __future__ import print_function
-from subprocess import call, CalledProcessError
+import subprocess
 import sys
 import signal
 import re
@@ -85,6 +85,7 @@ def normalize_encoding_upper(string):
             .upper()
 
     except AttributeError:
+
         # Py 3
         string = unicodedata.normalize('NFKD', string).upper()
 
@@ -211,7 +212,7 @@ def parse_date(date_arg):
     '''Parse date and return a DD/MM/YYYY string'''
 
     # Can parse human-like dates, like 'date' command
-    import parsedatetime as pdt # $ pip install parsedatetime
+    import parsedatetime as pdt
     from datetime import datetime
 
     # Get cal and now instances
@@ -283,10 +284,10 @@ class Rac1(object):
 
         # Connect to server, send request and get response (and follow 3XX)
         req = requests.get(
-            'http{SECURE}://{SERVER}{PATH}'.format(
-                SECURE=('s' if https else ''),
-                SERVER=host,
-                PATH=path),
+            'http{secure}://{host}{path}'.format(
+                secure=('s' if https else ''),
+                host=host,
+                path=path),
             headers=headers)
 
         return req.status_code, req.text
@@ -294,22 +295,6 @@ class Rac1(object):
 
     def get_rac1_list_page(self, date, page=0):
         '''Download HTML with audio UUIDs'''
-
-        # Al tanto! Alternativa que parece funcionar mejor:
-        # wget -O - \
-        #    "http://www.rac1.cat/audioteca/a-la-carta/cerca?text=&sectionId=HOUR&from=24%2F07%2F2017&to=" \
-        #        | grep 'http://audio.rac1.cat'
-        # (echo '<xml>\n'; cat test; echo '</xml>' ) \
-        #     | egrep -v '<input|<i class|<iframe' \
-        #     | sed -e 's/\?source=WEB&download//g' \
-        #     | xml2
-        #
-        # wget -q -O - \
-        #    "http://www.rac1.cat/audioteca/a-la-carta/cerca?text=&programId=&sectionId=HOUR&from=24%2F09%2F2017&to=&pageNumber=0" \
-        #        | egrep 'data-audio-id|data-audioteca-search-page' \
-        #        | sed -e 's/^.* \(data-[^=]*\)="\([^"]*\)".*$/\1=\2/g'
-
-        # http://www.rac1.cat/audioteca/rss/el-mon/HOUR
 
         # {date} must be in format DD/MM/YYYY
         host = "www.rac1.cat"
@@ -331,7 +316,6 @@ class Rac1(object):
                       page=page
                   )))
 
-        # Return downloaded page
         status, data = self.get_page(host, path.format(date=date, page=page), https=True)
 
         if status != 200:
@@ -343,6 +327,7 @@ class Rac1(object):
                       data=data
                   ))
 
+        # Return downloaded page
         return data
 
 
@@ -445,11 +430,6 @@ class Rac1(object):
         # Get all day audio UUIDs
         podcasts_list = [self.get_podcast_data(uuid) for uuid in self.get_audio_uuids(date)]
 
-        # DEBUG
-        #pprint([ [podcast['audio']['time'], podcast['path']] for podcast in podcasts_list ])
-        #pprint(podcasts_list)
-        #exit(0)
-
         # Return the list in reverse order
         return podcasts_list[::-1]
 
@@ -467,14 +447,10 @@ class Rac1(object):
             play = True
 
             # From and To hours
-            #pprint(podcast['audio'])
             if date != podcast['audio']['date']:
-                #print("NODATE: Filtering %s: '%s' != '%s'" % \
-                #    (podcast['audio']['title'], date, podcast['audio']['date']))
                 play = False
 
             if not self.args.from_hour <= podcast['audio']['hour'] <= self.args.to_hour:
-                #print("NOHOUR: Filtering %s" % (podcast['audio']['title']))
                 play = False
 
             # Exclusions
@@ -486,10 +462,10 @@ class Rac1(object):
                          exc in normalize_encoding_upper(podcast['audio']['title']):
                         play = False
 
-            # Si l'hem d'escoltar
+            # If we have to play this podcast
             if play:
 
-                # Si és el primer, apliquem el FastForward inicial
+                # If its the first, apply the initial FastForward
                 if len(podcasts_filtered) == 0:
                     podcast['start'] = self.args.start_first
                 else:
@@ -546,8 +522,8 @@ class Rac1(object):
         # Listen with mplayer
         # Use try to catch CTRL+C correctly
         try:
-            self.mplayer_process = call(call_args)
-        except CalledProcessError as exc:
+            self.mplayer_process = subprocess.call(call_args)
+        except subprocess.CalledProcessError as exc:
             raise ExceptionMPlayer(u"ERROR amb MPlayer: {error}".format(error=exc.output))
 
 
@@ -614,10 +590,6 @@ class Rac1(object):
 
 def main(argv=None, rac1_class=Rac1):
     '''Parses arguments, gets podcasts list and play its items according to arguments'''
-
-    # Only Py2
-    #import os
-    #sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
     # Parse ARGv
     args = parse_args(argv)
