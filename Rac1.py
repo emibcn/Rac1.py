@@ -304,7 +304,7 @@ class Rac1(object):
         return req.status_code, req.text
 
 
-    def get_rac1_list_page(self, date, page=0):
+    def get_rac1_list_page(self, page=0):
         '''Download HTML with audio UUIDs'''
 
         # {date} must be in format DD/MM/YYYY
@@ -323,7 +323,7 @@ class Rac1(object):
 
         print(u"### Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {host}{path}" \
               .format(
-                  date=date,
+                  date=self.args.date,
                   host=host,
                   path=path))
 
@@ -371,11 +371,11 @@ class Rac1(object):
         return audio_uuid_list_dedups, pages_list
 
 
-    def get_audio_uuids(self, date):
+    def get_audio_uuids(self):
         '''Get full day audio UUIDs list'''
 
         # Download date's first page
-        data = self.get_rac1_list_page(date)
+        data = self.get_rac1_list_page()
 
         # Parse downloaded data, getting UUIDs initial list and pages list
         audio_uuid_list, pages_list = self.parse_rac1_list_page(data)
@@ -388,7 +388,7 @@ class Rac1(object):
             _, page_number = page.split(u'=')
 
             # Download page uuids
-            data = self.get_rac1_list_page(date, page_number)
+            data = self.get_rac1_list_page(page_number)
 
             # Parse page data (discard pages list, as we already have it)
             audio_uuid_list_page, _ = self.parse_rac1_list_page(data)
@@ -437,7 +437,7 @@ class Rac1(object):
         return data
 
 
-    def get_podcasts_list(self, date):
+    def get_podcasts_list(self):
         '''
         Get list of podcasts from predefined URL
 
@@ -447,7 +447,7 @@ class Rac1(object):
         '''
 
         # Get all day audio UUIDs
-        podcasts_list = [self.get_podcast_data(uuid) for uuid in self.get_audio_uuids(date)]
+        podcasts_list = [self.get_podcast_data(uuid) for uuid in self.get_audio_uuids()]
 
         # Return the list in reverse order
         return podcasts_list[::-1]
@@ -637,7 +637,7 @@ def main(argv=None, rac1_class=Rac1):
         #  - Parse XML (done via get_podcasts_list)
         try:
             podcasts = rac1.filter_podcasts_list(
-                rac1.get_podcasts_list(args.date)
+                rac1.get_podcasts_list()
             )[done_last:]
 
         # Exit with error return value 1 on error downloading
