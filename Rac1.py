@@ -324,8 +324,7 @@ class Parser(object):
                 "pageNumber={page}&"
                 "btn-search=").format(
                     date=self.date,
-                    page=page
-                )
+                    page=page)
 
         print(u"### Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {host}{path}" \
               .format(
@@ -369,7 +368,7 @@ class Parser(object):
             data = list(data)
 
         # Filter results by type
-        audio_uuids = (
+        uuids = (
             line[1]
             for line in data
             if line[0] == u'data-audio-id')
@@ -379,39 +378,39 @@ class Parser(object):
             if line[0] == u'data-audioteca-search-page')
 
         # Return segregated generators
-        return audio_uuids, pages
+        return uuids, pages
 
 
-    def get_audio_uuids(self):
+    def get_podcasts_uuids(self):
         '''Full day unique audio UUIDs generator'''
 
-        # Download and parse first page data, getting UUIDs initial list and pages list
-        audio_uuids_page, pages = self.parse_rac1_page(self.get_rac1_page())
+        # Remember yielded UUIDs to prevent duplicates
+        uuids = []
 
-        # Remember yielded UUIDs
-        audio_uuids = []
+        # Parse all pages
+        page, pages = None, None
+        while True:
 
-        # Yield already downloaded uuids
-        for uuid in audio_uuids_page:
-            if uuid not in audio_uuids:
-                audio_uuids.append(uuid)
-                yield uuid
+            if page is None:
+                # Download and parse first page data, getting UUIDs initial list and pages list
+                uuids_page, pages = self.parse_rac1_page(self.get_rac1_page())
 
-        # Get extra pages, if needed
-        # Jump first page, as it has already been downloaded
-        next(pages)
-        for page in pages:
+                # Jump first page, as it has already been downloaded
+                page = next(pages)
 
-            # Download and parse page UUIDs (discard pages generator, as we already have it)
-            audio_uuids_page, _ = self.parse_rac1_page(
-                self.get_rac1_page(page),
-                discard_pages=True)
+            else:
+                # Download and parse page UUIDs (discard pages generator, as we already have it)
+                uuids_page, _ = self.parse_rac1_page(
+                    self.get_rac1_page(page),
+                    discard_pages=True)
 
             # Add to list and yield audio UUIDs if not already in list
-            for uuid in audio_uuids_page:
-                if uuid not in audio_uuids:
-                    audio_uuids.append(uuid)
+            for uuid in uuids_page:
+                if uuid not in uuids:
+                    uuids.append(uuid)
                     yield uuid
+
+            page = next(pages)
 
 
     def get_podcast_data(self, uuid):
@@ -462,7 +461,7 @@ class Parser(object):
         # Need to get list from generator to invert order
         for uuid, _ in list(
                 (uuid, print(u"#### Got UUID: %s" % (uuid)))
-                for uuid in self.get_audio_uuids()
+                for uuid in self.get_podcasts_uuids()
         )[::-1]:
             yield self.get_podcast_data(uuid)
 
