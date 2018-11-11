@@ -296,14 +296,14 @@ def get_page(host, path, https=False):
 class Parser(object):
     '''Class to parse and interact to Rac1 podcasts backend API'''
 
-    # Podcast cached data by audio UUID
-    _podcast_data = {}
-
     # Date of podcasts to download
     date = ""
 
+    # Podcast cached data by audio UUID
+    _podcast_data = {}
+
     # Compiled RegExp for data attributes parsing
-    data_attrs_re = re.compile(r'^.* (data-[^=]*)="([^"]*)".*$')
+    _data_attrs_re = re.compile(r'^.* (data-[^=]*)="([^"]*)".*$')
 
 
     def __init__(self, date):
@@ -359,7 +359,7 @@ class Parser(object):
         # - Filter lines containing data-audio-id or data-audioteca-search-page
         # - Only get values for data-* HTML attributes, without quotes
         data_list = (
-            re.sub(self.data_attrs_re, r'\1=\2', line).split(u'=')
+            re.sub(self._data_attrs_re, r'\1=\2', line).split(u'=')
             for line in data.split(u'\n')
             if u'data-audio-id' in line \
                 or (not discard_pages and u'data-audioteca-search-page' in line))
