@@ -631,7 +631,9 @@ class PlayerCommand(object):
             self._process = None
 
         except subprocess.CalledProcessError as exc:
-            raise ExceptionPlayer(u"ERROR amb {command}: {error}".format(command=self.command_name,error=exc.output))
+            raise ExceptionPlayer(u"ERROR amb {command}: {error}".format(
+                command=self.command_name,
+                error=exc.output))
 
 
     def signal_handler(self, sign, *_): # Unused frame argument
@@ -653,7 +655,7 @@ class PlayerCommand(object):
 
         # If mplayer process is defined
         if self._process is not None:
-            print(u"Waiting for {command} to finish...".format(self.command_name))
+            print(u"Waiting for {command} to finish...".format(command=self.command_name))
 
             import psutil
 
@@ -661,7 +663,8 @@ class PlayerCommand(object):
                 # Get process info
                 process = psutil.Process(self._process)
 
-                print(u"Killing {command} and all possible childs.".format(self.command_name))
+                print(u"Killing {command} and all possible childs.".format(
+                    command=self.command_name))
 
                 # Kill process childs and wait for them to exit completely
                 for proc in process.children(recursive=True):
