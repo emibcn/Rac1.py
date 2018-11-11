@@ -628,6 +628,51 @@ class Rac1(object):
         exit(3)
 
 
+    def get_autoreloaded_podcasts(self):
+        '''Generator for an autoreloaded list of podcasts'''
+
+        # Play until none podcast is played
+        # This will ensure re-download of feed when we begin to play
+        # before last podcast is listed there
+        done_total = 0
+
+        while True:
+            # Get and play list of podcasts:
+            #  - Using human readable dates (already parsed at parse_my_args)
+            #  - From HTTP connection (done via get_podcasts)
+            #  - Parse XML (done via get_podcasts)
+            #  - Filtered by user provided options (done via filter_podcasts)
+            #  - Discarding initial `done_total` podcasts
+            #  - Playing with mplayer (done via play_podcast)
+            #  - Handling two possible expected Exceptions to exit cleanly
+            done = 0
+            try:
+                for i, podcast in enumerate(self.get_filtered_podcasts()):
+
+                    # Discard already played podcasts
+                    if i >= done_total:
+                        done += 1
+
+                        # Yield podcast
+                        yield podcast
+
+            except ExceptionDownloading:
+                raise
+
+            # If anything was played, sum it to total
+            if done > 0:
+                done_total += done
+
+            # If we couldn't play anything, don't try to download
+            # the list again: there will be nothing, again
+            else:
+                break
+
+            # If we are only printing URLs (again, we played nothing), stop trying, too
+            if self.args.only_print or self.args.only_print_url:
+                break
+
+
 def main(argv=None, rac1_class=Rac1):
     '''Parses arguments, gets podcasts list and play its items according to arguments'''
 
@@ -640,56 +685,26 @@ def main(argv=None, rac1_class=Rac1):
     # Borrow SIGINT to exit cleanly and disable stdout buffering
     signal.signal(signal.SIGINT, rac1.signal_handler)
 
-    # Play until none podcast is played
-    # This will ensure re-download of feed when we begin to play
-    # before last podcast is listed there
-    done_total = 0
+    try:
+        # Iterate over autoreloaded podcasts generator
+        for podcast in rac1.get_autoreloaded_podcasts():
 
-    while True:
-        # Get and play list of podcasts:
-        #  - Using human readable dates (already parsed at parse_my_args)
-        #  - From HTTP connection (done via get_podcasts)
-        #  - Parse XML (done via get_podcasts)
-        #  - Filtered by user provided options (done via filter_podcasts)
-        #  - Discarding initial `done_total` podcasts
-        #  - Playing with mplayer (done via play_podcast)
-        #  - Handling two possible expected Exceptions to exit cleanly
-        done = 0
-        try:
-            for i, podcast in enumerate(rac1.get_filtered_podcasts()):
+            try:
+                # Play podcast or only print command or URL
+                rac1.play_podcast(podcast)
 
-                # Discard already played podcasts
-                if i >= done_total:
-                    done += 1
+            except ExceptionMPlayer as exc:
+                # Exit with error return value 2 on error playing
+                print(exc)
+                return 2
 
-                    try:
-                        # Play podcast or only print command or URL
-                        rac1.play_podcast(podcast)
-
-                    # Exit with error return value 2 on error playing
-                    except ExceptionMPlayer as exc:
-                        print(exc)
-                        return 2
-
+    except ExceptionDownloading as exc:
         # Exit with error return value 1 on error downloading
-        except ExceptionDownloading as exc:
-            print(exc)
-            return 1
-
-        # If anything was played, sum it to total
-        if done > 0:
-            done_total += done
-
-        # If we couldn't play anything, don't try to download
-        # the list again: there will be nothing, again
-        else:
-            break
-
-        # If we are only printing URLs (again, we played nothing), stop trying, too
-        if args.only_print or args.only_print_url:
-            break
+        print(exc)
+        return 1
 
     return 0
+
 
 if __name__ == "__main__":
     exit(main())
