@@ -258,8 +258,11 @@ class ExceptionMPlayer(Exception):
 class Rac1(object):
     '''Class to interact to Rac1 podcasts backend API'''
 
-    mplayer_process = None
-    process_already_exiting = False
+    # Player PID
+    _mplayer_process = None
+    _process_already_exiting = False
+
+    # Arguments to customize behaviour
     args = configargparse.Namespace(
         date='today',
         from_hour='8',
@@ -535,7 +538,7 @@ class Rac1(object):
         # Listen with mplayer
         # Use try to catch CTRL+C correctly
         try:
-            self.mplayer_process = subprocess.call(call_args)
+            self._mplayer_process = subprocess.call(call_args)
         except subprocess.CalledProcessError as exc:
             raise ExceptionMPlayer(u"ERROR amb MPlayer: {error}".format(error=exc.output))
 
@@ -558,10 +561,10 @@ class Rac1(object):
         '''Exits cleanly'''
 
         # Don't begin exit process more than once
-        if self.process_already_exiting:
+        if self._process_already_exiting:
             return
 
-        self.process_already_exiting = True
+        self._process_already_exiting = True
 
         # Flush stdout and wait until mplayer exits completely
         sys.stdout.flush()
@@ -572,14 +575,14 @@ class Rac1(object):
         time.sleep(1)
 
         # If mplayer process is defined
-        if self.mplayer_process is not None:
+        if self._mplayer_process is not None:
             print(u"Waiting for mplayer to finish...")
 
             import psutil
 
             try:
                 # Get process info
-                process = psutil.Process(self.mplayer_process)
+                process = psutil.Process(self._mplayer_process)
 
                 print(u"Killing MPlayer and all possible childs.")
 
