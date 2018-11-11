@@ -310,7 +310,7 @@ class Parser(object):
         self.date = date
 
 
-    def get_rac1_list_page(self, page=0):
+    def get_rac1_page(self, page=0):
         '''Download HTML with audio UUIDs'''
 
         # {date} must be in format DD/MM/YYYY
@@ -333,7 +333,7 @@ class Parser(object):
                   host=host,
                   path=path))
 
-        status, data = get_page(host, path, https=True)
+        status, data_raw = get_page(host, path, https=True)
 
         if status != 200:
             raise ExceptionDownloading(
@@ -341,14 +341,14 @@ class Parser(object):
                  "amb el llistat de podcasts: "
                  "{status}: {data}").format(
                      status=status,
-                     data=data
+                     data=data_raw
                  ))
 
         # Return downloaded page
-        return data
+        return data_raw
 
 
-    def parse_rac1_list_page(self, data, discard_pages=False):
+    def parse_rac1_page(self, data_raw, discard_pages=False):
         '''
         Parse Rac1 page data and a tuple of 2 generators:
         - Podcasts UUIDs generator in hour ascending order
@@ -358,59 +358,59 @@ class Parser(object):
         # Parse response:
         # - Filter lines containing data-audio-id or data-audioteca-search-page
         # - Only get values for data-* HTML attributes, without quotes
-        data_list = (
+        data = (
             re.sub(self._data_attrs_re, r'\1=\2', line).split(u'=')
-            for line in data.split(u'\n')
+            for line in data_raw.split(u'\n')
             if u'data-audio-id' in line \
                 or (not discard_pages and u'data-audioteca-search-page' in line))
 
         # Convert to list if we need pages generator (cache), let as generator if not
         if not discard_pages:
-            data_list = list(data_list)
+            data = list(data)
 
         # Filter results by type
-        audio_uuid_list = (
+        audio_uuids = (
             line[1]
-            for line in data_list
+            for line in data
             if line[0] == u'data-audio-id')
-        pages_list = () if discard_pages else (
+        pages = () if discard_pages else (
             line[1]
-            for line in data_list
+            for line in data
             if line[0] == u'data-audioteca-search-page')
 
-        # Return segregated lists
-        return audio_uuid_list, pages_list
+        # Return segregated generators
+        return audio_uuids, pages
 
 
     def get_audio_uuids(self):
-        '''Full day audio UUIDs generator'''
+        '''Full day unique audio UUIDs generator'''
 
         # Download and parse first page data, getting UUIDs initial list and pages list
-        audio_uuid_list_page, pages_list = self.parse_rac1_list_page(self.get_rac1_list_page())
+        audio_uuids_page, pages = self.parse_rac1_page(self.get_rac1_page())
 
         # Remember yielded UUIDs
-        audio_uuid_list = []
+        audio_uuids = []
 
         # Yield already downloaded uuids
-        for uuid in audio_uuid_list_page:
-            if uuid not in audio_uuid_list:
-                audio_uuid_list.append(uuid)
+        for uuid in audio_uuids_page:
+            if uuid not in audio_uuids:
+                audio_uuids.append(uuid)
                 yield uuid
 
         # Get extra pages, if needed
         # Jump first page, as it has already been downloaded
-        next(pages_list)
-        for page in pages_list:
+        next(pages)
+        for page in pages:
 
             # Download and parse page UUIDs (discard pages generator, as we already have it)
-            audio_uuid_list_page, _ = self.parse_rac1_list_page(
-                self.get_rac1_list_page(page),
+            audio_uuids_page, _ = self.parse_rac1_page(
+                self.get_rac1_page(page),
                 discard_pages=True)
 
             # Add to list and yield audio UUIDs if not already in list
-            for uuid in audio_uuid_list_page:
-                if uuid not in audio_uuid_list:
-                    audio_uuid_list.append(uuid)
+            for uuid in audio_uuids_page:
+                if uuid not in audio_uuids:
+                    audio_uuids.append(uuid)
                     yield uuid
 
 
