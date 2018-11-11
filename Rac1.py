@@ -523,6 +523,51 @@ class Rac1(object):
             self.get_podcasts())
 
 
+    def get_autoreloaded_podcasts(self):
+        '''Generator for an autoreloaded list of podcasts'''
+
+        # Play until none podcast is played
+        # This will ensure re-download of feed when we begin to play
+        # before last podcast is listed there
+        done_total = 0
+
+        while True:
+            # Get and play list of podcasts:
+            #  - Using human readable dates (already parsed at parse_my_args)
+            #  - From HTTP connection (done via get_podcasts)
+            #  - Parse XML (done via get_podcasts)
+            #  - Filtered by user provided options (done via filter_podcasts)
+            #  - Discarding initial `done_total` podcasts
+            #  - Playing with mplayer (done via play_podcast)
+            #  - Handling two possible expected Exceptions to exit cleanly
+            done = 0
+            try:
+                for i, podcast in enumerate(self.get_filtered_podcasts()):
+
+                    # Discard already played podcasts
+                    if i >= done_total:
+                        done += 1
+
+                        # Yield podcast
+                        yield podcast
+
+            except ExceptionDownloading:
+                raise
+
+            # If anything was played, sum it to total
+            if done > 0:
+                done_total += done
+
+            # If we couldn't play anything, don't try to download
+            # the list again: there will be nothing, again
+            else:
+                break
+
+            # If we are only printing URLs (again, we played nothing), stop trying, too
+            if self.args.only_print or self.args.only_print_url:
+                break
+
+
     @classmethod
     def play_podcast_mplayer_call_args(cls, podcast):
         '''Creates the calling array for playing a podcast with MPlayer. Allows easy overriding.'''
@@ -626,51 +671,6 @@ class Rac1(object):
 
         # If we are handling signal, we can exit program
         exit(3)
-
-
-    def get_autoreloaded_podcasts(self):
-        '''Generator for an autoreloaded list of podcasts'''
-
-        # Play until none podcast is played
-        # This will ensure re-download of feed when we begin to play
-        # before last podcast is listed there
-        done_total = 0
-
-        while True:
-            # Get and play list of podcasts:
-            #  - Using human readable dates (already parsed at parse_my_args)
-            #  - From HTTP connection (done via get_podcasts)
-            #  - Parse XML (done via get_podcasts)
-            #  - Filtered by user provided options (done via filter_podcasts)
-            #  - Discarding initial `done_total` podcasts
-            #  - Playing with mplayer (done via play_podcast)
-            #  - Handling two possible expected Exceptions to exit cleanly
-            done = 0
-            try:
-                for i, podcast in enumerate(self.get_filtered_podcasts()):
-
-                    # Discard already played podcasts
-                    if i >= done_total:
-                        done += 1
-
-                        # Yield podcast
-                        yield podcast
-
-            except ExceptionDownloading:
-                raise
-
-            # If anything was played, sum it to total
-            if done > 0:
-                done_total += done
-
-            # If we couldn't play anything, don't try to download
-            # the list again: there will be nothing, again
-            else:
-                break
-
-            # If we are only printing URLs (again, we played nothing), stop trying, too
-            if self.args.only_print or self.args.only_print_url:
-                break
 
 
 def main(argv=None, rac1_class=Rac1):
