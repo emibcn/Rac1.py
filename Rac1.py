@@ -343,7 +343,7 @@ class Rac1(object):
 
 
     @classmethod
-    def parse_rac1_list_page(cls, data):
+    def parse_rac1_list_page(cls, data, discard_pages=False):
         '''Parse Rac1 data and return podcasts list in hour ascending order'''
 
         my_re = re.compile(r'^.* (data-[^=]*)="([^"]*)".*$')
@@ -355,11 +355,11 @@ class Rac1(object):
         data_list = [re.sub(my_re, r'\1=\2', line) \
                  for line in data.split(u'\n')
                      if u'data-audio-id' in line \
-                         or u'data-audioteca-search-page' in line]
+                         or (not discard_pages and u'data-audioteca-search-page' in line)]
 
         # Filter results by type
         audio_uuid_list = [line for line in data_list if u'data-audio-id' in line]
-        pages_list = [line for line in data_list if u'data-audioteca-search-page' in line]
+        pages_list = [] if discard_pages else [line for line in data_list if u'data-audioteca-search-page' in line]
 
         # Deduply
         audio_uuid_list_dedups = []
@@ -391,7 +391,7 @@ class Rac1(object):
             data = self.get_rac1_list_page(page_number)
 
             # Parse page data (discard pages list, as we already have it)
-            audio_uuid_list_page, _ = self.parse_rac1_list_page(data)
+            audio_uuid_list_page, _ = self.parse_rac1_list_page(data, discard_pages=True)
 
             # Add audio UUIDs to the list if not already in the list
             for uuid in audio_uuid_list_page:
