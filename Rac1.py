@@ -126,27 +126,27 @@ def parse_args(argv):
         pass
 
     parser = configargparse.ArgParser(
-        description="Escolta els podcasts de Rac1 sequencialment i sense interrupcions.",
+        description="Escolta els podcasts de Rac1 seqüencialment i sense interrupcions.",
         formatter_class=MyCustomFormatter,
         default_config_files=['/etc/Rac1/*.conf', '~/.Rac1', '~/.Rac1.*'],
-        epilog="Nota: Mentre estàs escoltant un podcast amb el `mplayer`:\n"
-               "- Pots passar al següent podcast prement les tecles [ENTER] o [q].\n"
-               "- Pots sortir del tot prement CTRL+C\n"
-               "- Pots tirar endavant i endarrere amb les tecles:\n"
-               "   - SHIFT amb tecles de direccions esquerra/dreta (5s)\n"
-               "   - De direccions esquerra/dreta (10s)\n"
-               "   - De direccions amunt/avall (1m)\n"
-               "   - De Pàgina amunt/avall (10m)\n"
+        epilog=("Nota: Mentre estàs escoltant un podcast amb el `mplayer`:\n"
+                "- Pots passar al següent podcast prement les tecles [ENTER] o [q].\n"
+                "- Pots sortir del tot prement CTRL+C\n"
+                "- Pots tirar endavant i endarrere amb les tecles:\n"
+                "   - SHIFT amb tecles de direccions esquerra/dreta (5s)\n"
+                "   - De direccions esquerra/dreta (10s)\n"
+                "   - De direccions amunt/avall (1m)\n"
+                "   - De Pàgina amunt/avall (10m)\n")
     )
 
     parser.add_argument('-c', '--config',
                         required=False,
                         is_config_file=True,
-                        help='Camí al fitxer de configuració')
+                        help="Camí al fitxer de configuració")
     parser.add_argument('-w', '--write',
                         required=False,
                         is_write_out_config_file_arg=True,
-                        help='Desa els arguments al fitxer de configuració WRITE')
+                        help="Desa els arguments al fitxer de configuració WRITE")
     parser.add_argument("-p", "--print",
                         dest='only_print',
                         default=False,
