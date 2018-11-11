@@ -109,9 +109,8 @@ def parse_args(argv):
         formatter_class=MyCustomFormatter,
         default_config_files=['/etc/Rac1/*.conf', '~/.Rac1', '~/.Rac1.*'],
         epilog="Nota: Mentre estàs escoltant un podcast amb el `mplayer`:\n"
-               "- Pots passar al següent\n"
-               "- Prement les tecles [ENTER] o [q].\n\n"
-               "- Pots sortir del tot prement CTRL+C\n\n"
+               "- Pots passar al següent podcast prement les tecles [ENTER] o [q].\n"
+               "- Pots sortir del tot prement CTRL+C\n"
                "- Pots tirar endavant i endarrere amb les tecles:\n"
                "   - SHIFT amb tecles de direccions esquerra/dreta (5s)\n"
                "   - De direccions esquerra/dreta (10s)\n"
@@ -305,27 +304,27 @@ class Rac1(object):
                 "from={date}&"
                 "to={date}&"
                 "pageNumber={page}&"
-                "btn-search=")
+                "btn-search=").format(
+                    date=self.args.date,
+                    page=page
+                )
 
         print(u"### Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {host}{path}" \
               .format(
                   date=date,
                   host=host,
-                  path=path.format(
-                      date=date,
-                      page=page
-                  )))
+                  path=path))
 
-        status, data = self.get_page(host, path.format(date=date, page=page), https=True)
+        status, data = self.get_page(host, path, https=True)
 
         if status != 200:
             raise ExceptionDownloading(
                 (u"Error intentant descarregar la pàgina HTML "
-                 "amb el llistat de podcasts: {status}: {data}") \
-                  .format(
-                      status=status,
-                      data=data
-                  ))
+                 "amb el llistat de podcasts: "
+                 "{status}: {data}").format(
+                     status=status,
+                     data=data
+                 ))
 
         # Return downloaded page
         return data
@@ -394,11 +393,13 @@ class Rac1(object):
     def get_podcast_data(self, uuid):
         '''Download podcast information by its UUID'''
 
+        print("#### Download UUID: %s" % (uuid))
+
         host = "api.audioteca.rac1.cat"
-        path = "/piece/audio?id={uuid}"
+        path = "/piece/audio?id={uuid}".format(uuid=uuid)
 
         # Download podcast JSON data
-        status, data_raw = self.get_page(host, path.format(uuid=uuid), https=True)
+        status, data_raw = self.get_page(host, path, https=True)
 
         if status != 200:
             raise ExceptionDownloading(
@@ -446,10 +447,11 @@ class Rac1(object):
 
             play = True
 
-            # From and To hours
+            # Only this' date podcasts (sometimes it gets other's, despite filter)
             if date != podcast['audio']['date']:
                 play = False
 
+            # From and To hours
             if not self.args.from_hour <= podcast['audio']['hour'] <= self.args.to_hour:
                 play = False
 
@@ -479,11 +481,11 @@ class Rac1(object):
 
     @classmethod
     def play_podcast_mplayer_call_args(cls, podcast):
-        '''Creates the calling array for playing a podcast with MPlayer'''
+        '''Creates the calling array for playing a podcast with MPlayer. Allows easy overriding.'''
 
         # Cache:
-        #  - Try to play as soon as possible
-        #  - Try to download full podcast from the beginning (full cache)
+        #  - Try to play as soon as possible (with `-cache-min`)
+        #  - Try to download full podcast from the beginning, aka full cache (with `-cache`)
         return [
             "mplayer",
             "-cache-min", "1",
@@ -509,11 +511,11 @@ class Rac1(object):
             print(*print_args, sep=" ")
             return
 
-        print(u'### Escoltem "{}" {}h: {}' \
+        print(u'### Escoltem "{title}" {hour}h: {path}' \
               .format(
-                  podcast['audio']['title'],
-                  podcast['audio']['hour'],
-                  podcast['path']
+                  title=podcast['audio']['title'],
+                  hour=podcast['audio']['hour'],
+                  path=podcast['path']
               ))
 
         # Posem el títol a l'intèrpret de comandes
@@ -594,14 +596,15 @@ def main(argv=None, rac1_class=Rac1):
     # Parse ARGv
     args = parse_args(argv)
 
+    # Instantiate main class
     rac1 = rac1_class(args=args)
 
     # Borrow SIGINT to exit cleanly and disable stdout buffering
     signal.signal(signal.SIGINT, rac1.signal_handler)
 
     # Play until none podcast is played
-    # This will ensure re-download of XML list when we begin to play
-    # before last podcast is listed in the XML Feed
+    # This will ensure re-download of feed when we begin to play
+    # before last podcast is listed there
     done_last = 0
 
     while True:
