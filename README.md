@@ -69,8 +69,8 @@ overwrites the config file excludes with the arguments ones (sic).
 ## Script help (catalan)
 
 ```
-usage: Rac1 [-h] [-c CONFIG] [-w WRITE] [-p] [-d DATE] [-f FROM] [-t TO]
-            [-s START] [-x EXCLUDE1[,EXCLUDE2...]] [-l]
+usage: Rac1.py [-h] [-c CONFIG] [-w WRITE] [-p] [-u] [-d DATE] [-f FROM]
+               [-t TO] [-s START] [-x EXCLUDE1[,EXCLUDE2...]] [-l]
 
 Escolta els podcasts de Rac1 sequencialment i sense interrupcions. Args that start with '--' (eg. -p) can also be set in a config file (/etc/Rac1/*.conf or ~/.Rac1 or ~/.Rac1.* or specified via -c). Config file syntax allows: key=value, flag=true, stuff=[a,b,c] (for details, see syntax at https://goo.gl/R74nmi). If an arg is specified in more than one place, then commandline values override config file values which override defaults.
 
@@ -82,6 +82,8 @@ optional arguments:
                         Desa els arguments al fitxer de configuració WRITE
                         (default: None)
   -p, --print           Només mostra el que s'executaria. (default: False)
+  -u, --print-url       Només mostra les URLs dels podcast que s'escoltarien.
+                        (default: False)
   -d DATE, --date DATE  El dia del que es vol escoltar els podcasts. (default:
                         today)
   -f FROM, --from FROM  La hora a partir de la que es vol escoltar la ràdio.
@@ -98,15 +100,13 @@ optional arguments:
                         No afecta posteriors entrades de '-x'. (default: None)
 
 Nota: Mentre estàs escoltant un podcast amb el `mplayer`:
-- Pots passar al següent
-- Prement les tecles [ENTER] o [q].
+- Pots passar al següent podcast prement les tecles [ENTER] o [q].
 - Pots sortir del tot prement CTRL+C
 - Pots tirar endavant i endarrere amb les tecles:
    - SHIFT amb tecles de direccions esquerra/dreta (5s)
    - De direccions esquerra/dreta (10s)
    - De direccions amunt/avall (1m)
    - De Pàgina amunt/avall (10m)
-
 ```
 
 ## Examples
