@@ -92,6 +92,27 @@ def normalize_encoding_upper(string):
     return string
 
 
+def parse_date(date_arg):
+    '''Parse date and return a DD/MM/YYYY string'''
+
+    # Can parse human-like dates, like 'date' command
+    import parsedatetime as pdt
+    from datetime import datetime
+
+    # Get cal and now instances
+    cal = pdt.Calendar()
+    now = datetime.now()
+
+    # Get date:
+    # - From string 'date_arg'
+    # - Using parsedatetime (pdt) calendar 'cal'
+    # - Relative to now
+    date = cal.parseDT(date_arg, now)[0]
+
+    # Return date string parsed as DD/MM/YYYY
+    return date.strftime('%d/%m/%Y')
+
+
 def parse_args(argv):
     '''Parse ARGv, `env` and config files, and return arg object'''
 
@@ -212,27 +233,6 @@ def parse_args(argv):
     return args
 
 
-def parse_date(date_arg):
-    '''Parse date and return a DD/MM/YYYY string'''
-
-    # Can parse human-like dates, like 'date' command
-    import parsedatetime as pdt
-    from datetime import datetime
-
-    # Get cal and now instances
-    cal = pdt.Calendar()
-    now = datetime.now()
-
-    # Get date:
-    # - From string 'date_arg'
-    # - Using parsedatetime (pdt) calendar 'cal'
-    # - Relative to now
-    date = cal.parseDT(date_arg, now)[0]
-
-    # Return date string parsed as DD/MM/YYYY
-    return date.strftime('%d/%m/%Y')
-
-
 class ExceptionDownloading(Exception):
     '''Error trying to download a page'''
 
@@ -286,6 +286,9 @@ class Parser(object):
     # Date of podcasts to download
     date = ""
 
+    # Compiled RegExp for data attributes parsing
+    data_attrs_re = re.compile(r'^.* (data-[^=]*)="([^"]*)".*$')
+
 
     def __init__(self, date):
         self.date = date
@@ -329,21 +332,18 @@ class Parser(object):
         return data
 
 
-    @classmethod
-    def parse_rac1_list_page(cls, data, discard_pages=False):
+    def parse_rac1_list_page(self, data, discard_pages=False):
         '''
         Parse Rac1 page data and a tuple of 2 generators:
         - Podcasts UUIDs generator in hour ascending order
         - Page numbers generator
         '''
 
-        my_re = re.compile(r'^.* (data-[^=]*)="([^"]*)".*$')
-
         # Parse response:
         # - Filter lines containing data-audio-id or data-audioteca-search-page
         # - Only get values for data-* HTML attributes, without quotes
         data_list = (
-            re.sub(my_re, r'\1=\2', line).split(u'=')
+            re.sub(self.data_attrs_re, r'\1=\2', line).split(u'=')
             for line in data.split(u'\n')
             if u'data-audio-id' in line \
                 or (not discard_pages and u'data-audioteca-search-page' in line))
@@ -437,7 +437,7 @@ class Parser(object):
         '''
         Podcasts generator from predefined URL
 
-        - Using human readable dates (already normalized in parse_my_args)
+        - Using human readable dates (already normalized in parse_args)
         - From HTTP connection
         - Parse HTTP and JSON
         '''
@@ -542,14 +542,12 @@ class Filter(object):
         done_total = 0
 
         while True:
-            # Get and play list of podcasts:
-            #  - Using human readable dates (already parsed at parse_my_args)
+            # Get and yield list of podcasts:
+            #  - Using human readable dates (already parsed at parse_args)
             #  - From HTTP connection (done via get_podcasts)
             #  - Parse XML (done via get_podcasts)
             #  - Filtered by user provided options (done via filter_podcasts)
             #  - Discarding initial `done_total` podcasts
-            #  - Playing with mplayer (done via play_podcast)
-            #  - Handling two possible expected Exceptions to exit cleanly
             done = 0
             try:
                 for i, podcast in enumerate(self.get_filtered_podcasts()):
@@ -728,7 +726,7 @@ def main(argv=None, filter_class=Filter, parser_class=Parser, player_class=MPlay
     # Parse ARGv
     args = parse_args(argv)
 
-    # Instantiate main class
+    # Instantiate filter and parser classes
     rac1 = filter_class(args=args, parser=parser_class(date=args.date))
 
     # Instantiate player class
@@ -737,6 +735,9 @@ def main(argv=None, filter_class=Filter, parser_class=Parser, player_class=MPlay
     # Borrow SIGINT to exit cleanly and disable stdout buffering
     signal.signal(signal.SIGINT, player.signal_handler)
 
+    # Get and play list of podcasts:
+    #  - Playing with mplayer (done via play_podcast)
+    #  - Handling two possible expected Exceptions to exit cleanly
     try:
         # Iterate over autoreloaded podcasts generator
         for podcast in rac1.get_autoreloaded_podcasts():
