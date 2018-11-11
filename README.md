@@ -159,10 +159,12 @@ If you want to use `vlc` instead of `mplayer`, you can extend `Rac1.py`:
 ```python
 import Rac1
 
-class MyRac1(Rac1.Rac1):
+class VlcPlayer(Rac1.PlayerCommand):
+
+    command_name = "VLC"
 
     @classmethod
-    def play_podcast_mplayer_call_args(cls, podcast):
+    def play_podcast_command_call_args(cls, podcast):
 
         # Parse seconds for dumb vlc
         time_list = str(podcast['start']).split(':')
@@ -179,5 +181,5 @@ class MyRac1(Rac1.Rac1):
             podcast['path']
         ]
 
-exit(Rac1.main(rac1_class=MyRac1))
+exit(Rac1.main(player_class=VlcPlayer))
 ```
