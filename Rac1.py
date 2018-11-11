@@ -244,23 +244,41 @@ class ExceptionDownloading(Exception):
         return self.message
 
 
-class ExceptionMPlayer(Exception):
-    '''Error executing MPlayer'''
+class ExceptionPlayer(Exception):
+    '''Error executing Player'''
 
     def __init__(self, message):
         self.message = message
-        super(ExceptionMPlayer, self).__init__(message)
+        super(ExceptionPlayer, self).__init__(message)
 
     def __str__(self):
         return self.message
 
 
+def get_page(host, path, https=False):
+    '''Downloads a page'''
+
+    headers = {
+        'User-Agent': "https://github.com/emibcn/Rac1.py",
+        'Cache-Control': 'max-age=0',
+        'Connection': 'keep-alive',
+        'DNT': '1',
+        'Upgrade-Insecure-Requests': '1',
+    }
+
+    # Connect to server, send request and get response (and follow 3XX)
+    req = requests.get(
+        'http{secure}://{host}{path}'.format(
+            secure=('s' if https else ''),
+            host=host,
+            path=path),
+        headers=headers)
+
+    return req.status_code, req.text
+
+
 class Rac1(object):
     '''Class to interact to Rac1 podcasts backend API'''
-
-    # Player PID
-    _mplayer_process = None
-    _process_already_exiting = False
 
     # Podcast cached data by audio UUID
     _podcast_data = {}
@@ -279,29 +297,6 @@ class Rac1(object):
 
     def __init__(self, args=args):
         self.args = args
-
-
-    @classmethod
-    def get_page(cls, host, path, https=False):
-        '''Downloads a page'''
-
-        headers = {
-            'User-Agent': "https://github.com/emibcn/Rac1.py",
-            'Cache-Control': 'max-age=0',
-            'Connection': 'keep-alive',
-            'DNT': '1',
-            'Upgrade-Insecure-Requests': '1',
-        }
-
-        # Connect to server, send request and get response (and follow 3XX)
-        req = requests.get(
-            'http{secure}://{host}{path}'.format(
-                secure=('s' if https else ''),
-                host=host,
-                path=path),
-            headers=headers)
-
-        return req.status_code, req.text
 
 
     def get_rac1_list_page(self, page=0):
@@ -327,7 +322,7 @@ class Rac1(object):
                   host=host,
                   path=path))
 
-        status, data = self.get_page(host, path, https=True)
+        status, data = get_page(host, path, https=True)
 
         if status != 200:
             raise ExceptionDownloading(
@@ -425,7 +420,7 @@ class Rac1(object):
         path = "/piece/audio?id={uuid}".format(uuid=uuid)
 
         # Download podcast JSON data
-        status, data_raw = self.get_page(host, path, https=True)
+        status, data_raw = get_page(host, path, https=True)
 
         if status != 200:
             raise ExceptionDownloading(
@@ -568,26 +563,40 @@ class Rac1(object):
                 break
 
 
-    @classmethod
-    def play_podcast_mplayer_call_args(cls, podcast):
-        '''Creates the calling array for playing a podcast with MPlayer. Allows easy overriding.'''
+class PlayerCommand(object):
+    '''Class to play Rac1 podcasts with external command'''
 
-        # Cache:
-        #  - Try to play as soon as possible (with `-cache-min`)
-        #  - Try to download full podcast from the beginning, aka full cache (with `-cache`)
-        return [
-            "mplayer",
-            "-cache-min", "1",
-            "-cache", str(podcast['durationSeconds'] * 10),
-            "-ss", str(podcast['start']),
-            podcast['path']
-        ]
+    command_name = "Virtual Player"
+
+    # Player PID
+    _process = None
+    _process_already_exiting = False
+
+    # Arguments to customize behaviour
+    args = configargparse.Namespace(
+        only_print=False,
+        only_print_url=False,
+    )
+
+
+    def __init__(self, args=args):
+        self.args = args
+
+
+    @classmethod
+    def play_podcast_command_call_args(cls, podcast):
+        '''
+        Creates the calling array for playing a podcast with a command.
+        Must be implemented by subclass.
+        '''
+        raise NotImplementedError((u"Subclass should implement command "
+                                   "arguments creation as a `@classmethod`."))
 
 
     def play_podcast(self, podcast):
-        '''Play a podcast with mplayer, or only print the command'''
+        '''Play a podcast with an external command, or only print the command'''
 
-        call_args = self.play_podcast_mplayer_call_args(podcast)
+        call_args = self.play_podcast_command_call_args(podcast)
 
         # Print URL?
         if self.args.only_print_url:
@@ -612,17 +621,17 @@ class Rac1(object):
                   path=podcast['path']
               ))
 
-        # Posem el títol a l'intèrpret de comandes
+        # Set title for command manager
         print(u"\x1B]2;{} {}h\x07".format(podcast['audio']['title'], podcast['audio']['hour']))
 
-        # Listen with mplayer
+        # Listen with command
         # Use try to catch CTRL+C correctly
         try:
-            self._mplayer_process = subprocess.call(call_args)
-            self._mplayer_process = None
+            self._process = subprocess.call(call_args)
+            self._process = None
 
         except subprocess.CalledProcessError as exc:
-            raise ExceptionMPlayer(u"ERROR amb MPlayer: {error}".format(error=exc.output))
+            raise ExceptionPlayer(u"ERROR amb {command}: {error}".format(command=self.command_name,error=exc.output))
 
 
     def signal_handler(self, sign, *_): # Unused frame argument
@@ -634,7 +643,7 @@ class Rac1(object):
 
         self._process_already_exiting = True
 
-        # Flush stdout and wait until mplayer exits completely
+        # Flush stdout and wait until process exits completely
         sys.stdout.flush()
         print(u'CTRL-C!! Sortim! ({signal})'.format(signal=sign))
 
@@ -643,28 +652,28 @@ class Rac1(object):
         time.sleep(1)
 
         # If mplayer process is defined
-        if self._mplayer_process is not None:
-            print(u"Waiting for mplayer to finish...")
+        if self._process is not None:
+            print(u"Waiting for {command} to finish...".format(self.command_name))
 
             import psutil
 
             try:
                 # Get process info
-                process = psutil.Process(self._mplayer_process)
+                process = psutil.Process(self._process)
 
-                print(u"Killing MPlayer and all possible childs.")
+                print(u"Killing {command} and all possible childs.".format(self.command_name))
 
-                # Kill mplayer childs and wait for them to exit completely
+                # Kill process childs and wait for them to exit completely
                 for proc in process.children(recursive=True):
                     proc.send_signal(signal.SIGTERM)
                     proc.wait()
 
-                # Kill mplayer and wait for it to exit completely
+                # Kill process and wait for it to exit completely
                 process.send_signal(signal.SIGTERM)
                 process.wait()
 
             except psutil.NoSuchProcess:
-                print(u"MPlayer already ended.")
+                print(u"{command} already ended.".format(command=self.command_name))
 
         # Reset terminal
         #subprocess.Popen(['reset']).wait()
@@ -673,7 +682,29 @@ class Rac1(object):
         exit(3)
 
 
-def main(argv=None, rac1_class=Rac1):
+
+class MPlayerCommand(PlayerCommand):
+    '''Class to play Rac1 podcasts using MPlayer command'''
+
+    command_name = "MPlayer"
+
+    @classmethod
+    def play_podcast_command_call_args(cls, podcast):
+        '''Creates the calling array for playing a podcast with MPlayer'''
+
+        # Cache:
+        #  - Try to play as soon as possible (with `-cache-min`)
+        #  - Try to download full podcast from the beginning, aka full cache (with `-cache`)
+        return [
+            "mplayer",
+            "-cache-min", "1",
+            "-cache", str(podcast['durationSeconds'] * 10),
+            "-ss", str(podcast['start']),
+            podcast['path']
+        ]
+
+
+def main(argv=None, rac1_class=Rac1, player_class=MPlayerCommand):
     '''Parses arguments, gets podcasts list and play its items according to arguments'''
 
     # Parse ARGv
@@ -682,8 +713,11 @@ def main(argv=None, rac1_class=Rac1):
     # Instantiate main class
     rac1 = rac1_class(args=args)
 
+    # Instantiate player class
+    player = player_class(args=args)
+
     # Borrow SIGINT to exit cleanly and disable stdout buffering
-    signal.signal(signal.SIGINT, rac1.signal_handler)
+    signal.signal(signal.SIGINT, player.signal_handler)
 
     try:
         # Iterate over autoreloaded podcasts generator
@@ -691,9 +725,9 @@ def main(argv=None, rac1_class=Rac1):
 
             try:
                 # Play podcast or only print command or URL
-                rac1.play_podcast(podcast)
+                player.play_podcast(podcast)
 
-            except ExceptionMPlayer as exc:
+            except ExceptionPlayer as exc:
                 # Exit with error return value 2 on error playing
                 print(exc)
                 return 2
