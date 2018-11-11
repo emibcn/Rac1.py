@@ -262,6 +262,9 @@ class Rac1(object):
     _mplayer_process = None
     _process_already_exiting = False
 
+    # Podcast cached data by audio UUID
+    _podcast_data = {}
+
     # Arguments to customize behaviour
     args = configargparse.Namespace(
         date='today',
@@ -402,6 +405,11 @@ class Rac1(object):
     def get_podcast_data(self, uuid):
         '''Download podcast information by its UUID'''
 
+        # Return cache if already downloaded
+        if uuid in self._podcast_data:
+            print("#### Cached UUID: %s" % (uuid))
+            return self._podcast_data[uuid]
+
         print("#### Download UUID: %s" % (uuid))
 
         host = "api.audioteca.rac1.cat"
@@ -424,7 +432,8 @@ class Rac1(object):
         # Parse the hour
         data['audio']['hour'] = int(data['audio']['time'].split(u':')[0])
 
-        # Return parsed data
+        # Save cache and return parsed data
+        self._podcast_data[uuid] = data
         return data
 
 
