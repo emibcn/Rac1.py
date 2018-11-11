@@ -92,145 +92,161 @@ def normalize_encoding_upper(string):
     return string
 
 
-def parse_date(date_arg):
-    '''Parse date and return a DD/MM/YYYY string'''
+class ParseArguments(object):
+    '''Parse ARGv, `env` and config files, and return proxied arg object'''
 
-    # Can parse human-like dates, like 'date' command
-    import parsedatetime as pdt
-    from datetime import datetime
+    _args = None
 
-    # Get cal and now instances
-    cal = pdt.Calendar()
-    now = datetime.now()
-
-    # Get date:
-    # - From string 'date_arg'
-    # - Using parsedatetime (pdt) calendar 'cal'
-    # - Relative to now
-    date = cal.parseDT(date_arg, now)[0]
-
-    # Return date string parsed as DD/MM/YYYY
-    return date.strftime('%d/%m/%Y')
+    def __getattr__(self, item):
+        '''Return arguments'''
+        return getattr(self._args, item)
 
 
-def parse_args(argv):
-    '''Parse ARGv, `env` and config files, and return arg object'''
+    def __init__(self, argv):
+        '''Call argument parsing method on initialization'''
+        self.parse_arguments(argv)
 
-    class MyCustomFormatter(
-            configargparse.ArgumentDefaultsHelpFormatter,
-            configargparse.RawDescriptionHelpFormatter):
-        '''Permet mostrar l'epilog amb la llista ben formatada, mentre es
-        mostren els arguments i els seus defaults formatats correctament
-        https://stackoverflow.com/questions/18462610/argumentparser-epilog-and-description-formatting-in-conjunction-with-argumentdef
-        '''
-        pass
 
-    parser = configargparse.ArgParser(
-        description="Escolta els podcasts de Rac1 seqüencialment i sense interrupcions.",
-        formatter_class=MyCustomFormatter,
-        default_config_files=['/etc/Rac1/*.conf', '~/.Rac1', '~/.Rac1.*'],
-        epilog=("Nota: Mentre estàs escoltant un podcast amb el `mplayer`:\n"
-                "- Pots passar al següent podcast prement les tecles [ENTER] o [q].\n"
-                "- Pots sortir del tot prement CTRL+C\n"
-                "- Pots tirar endavant i endarrere amb les tecles:\n"
-                "   - SHIFT amb tecles de direccions esquerra/dreta (5s)\n"
-                "   - De direccions esquerra/dreta (10s)\n"
-                "   - De direccions amunt/avall (1m)\n"
-                "   - De Pàgina amunt/avall (10m)\n")
-    )
+    @classmethod
+    def parse_date(cls, date_arg):
+        '''Parse date and return a DD/MM/YYYY string'''
 
-    parser.add_argument('-c', '--config',
-                        required=False,
-                        is_config_file=True,
-                        help="Camí al fitxer de configuració")
-    parser.add_argument('-w', '--write',
-                        required=False,
-                        is_write_out_config_file_arg=True,
-                        help="Desa els arguments al fitxer de configuració WRITE")
-    parser.add_argument("-p", "--print",
-                        dest='only_print',
-                        default=False,
-                        action="store_true",
-                        help="Només mostra el que s'executaria.")
-    parser.add_argument("-u", "--print-url",
-                        dest='only_print_url',
-                        default=False,
-                        action="store_true",
-                        help="Només mostra les URLs dels podcast que s'escoltarien.")
-    parser.add_argument("-d", "--date",
-                        dest='date',
-                        metavar="DATE",
-                        default="today",
-                        action="store",
-                        help="El dia del que es vol escoltar els podcasts.")
-    parser.add_argument("-f", "--from",
-                        dest='from_hour',
-                        metavar="FROM",
-                        default=8,
-                        type=int,
-                        action="store",
-                        help="La hora a partir de la que es vol escoltar la ràdio.")
-    parser.add_argument("-t", "--to",
-                        dest='to_hour',
-                        metavar="TO",
-                        default=14,
-                        type=int,
-                        action="store",
-                        help="La hora fins la que es vol escoltar la ràdio.")
-    parser.add_argument("-s", "--start-first",
-                        dest='start_first',
-                        metavar="START",
-                        default="0",
-                        action="store",
-                        help=("El moment en que cal començar el primer podcast, "
-                              "amb el format de l'opció '-ss' del mplayer."))
-    parser.add_argument("-x", "--exclude",
-                        dest='exclude',
-                        metavar="EXCLUDE1[,EXCLUDE2...]",
-                        default=[],
-                        action="append",
-                        help=("Programes a excloure, per hora o nom, "
-                              "separats per coma i/o en diverses aparicions de '-x'."))
-    parser.add_argument("-l", "--clean-exclude",
-                        dest='exclude',
-                        action='store_const',
-                        const=[],
-                        help=("Neteja la llista d'exclusions definida fins el moment. "
-                              "No afecta posteriors entrades de '-x'."))
+        # Can parse human-like dates, like 'date' command
+        import parsedatetime as pdt
+        from datetime import datetime
 
-    # Parse arguments
-    args = parser.parse_args(argv)
+        # Get cal and now instances
+        cal = pdt.Calendar()
+        now = datetime.now()
 
-    # Normalize Date
-    setattr(args, 'date', parse_date(args.date))
+        # Get date:
+        # - From string 'date_arg'
+        # - Using parsedatetime (pdt) calendar 'cal'
+        # - Relative to now
+        date = cal.parseDT(date_arg, now)[0]
 
-    # Normalize excludes: uppercase with no accents, splitted by comma into one-dimensional array
-    excludes = []
-    if len(args.exclude) > 0:
+        # Return date string parsed as DD/MM/YYYY
+        return date.strftime('%d/%m/%Y')
 
-        for exc in args.exclude:
 
-            # Exclude by hour
-            if isint(exc):
-                excludes.append(exc)
+    def parse_arguments(self, argv):
+        '''Parse ARGv, `env` and config files, and return arg object'''
 
-            # Exclude by name
-            else:
+        class MyCustomFormatter(
+                configargparse.ArgumentDefaultsHelpFormatter,
+                configargparse.RawDescriptionHelpFormatter):
+            '''Permet mostrar l'epilog amb la llista ben formatada, mentre es
+            mostren els arguments i els seus defaults formatats correctament
+            https://stackoverflow.com/questions/18462610/argumentparser-epilog-and-description-formatting-in-conjunction-with-argumentdef
+            '''
+            pass
 
-                # We're treating file input data here
-                # We must take care of it's encoding here
-                try:
-                    unicode(b'')
-                except NameError: # Py3: nothing to do
-                    excludes.extend(normalize_encoding_upper(exc).split(b','))
-                else: # Py2: Get Unicode string decoding from UTF8
-                    excludes.extend(normalize_encoding_upper(exc.decode('utf-8')).split(u','))
+        parser = configargparse.ArgParser(
+            description="Escolta els podcasts de Rac1 seqüencialment i sense interrupcions.",
+            formatter_class=MyCustomFormatter,
+            default_config_files=['/etc/Rac1/*.conf', '~/.Rac1', '~/.Rac1.*'],
+            epilog=("Nota: Mentre estàs escoltant un podcast amb el `mplayer`:\n"
+                    "- Pots passar al següent podcast prement les tecles [ENTER] o [q].\n"
+                    "- Pots sortir del tot prement CTRL+C\n"
+                    "- Pots tirar endavant i endarrere amb les tecles:\n"
+                    "   - SHIFT amb tecles de direccions esquerra/dreta (5s)\n"
+                    "   - De direccions esquerra/dreta (10s)\n"
+                    "   - De direccions amunt/avall (1m)\n"
+                    "   - De Pàgina amunt/avall (10m)\n")
+        )
 
-    # Add excludes to parsed arguments object
-    setattr(args, 'excludes', excludes)
+        parser.add_argument('-c', '--config',
+                            required=False,
+                            is_config_file=True,
+                            help="Camí al fitxer de configuració")
+        parser.add_argument('-w', '--write',
+                            required=False,
+                            is_write_out_config_file_arg=True,
+                            help="Desa els arguments al fitxer de configuració WRITE")
+        parser.add_argument("-p", "--print",
+                            dest='only_print',
+                            default=False,
+                            action="store_true",
+                            help="Només mostra el que s'executaria.")
+        parser.add_argument("-u", "--print-url",
+                            dest='only_print_url',
+                            default=False,
+                            action="store_true",
+                            help="Només mostra les URLs dels podcast que s'escoltarien.")
+        parser.add_argument("-d", "--date",
+                            dest='date',
+                            metavar="DATE",
+                            default="today",
+                            action="store",
+                            help="El dia del que es vol escoltar els podcasts.")
+        parser.add_argument("-f", "--from",
+                            dest='from_hour',
+                            metavar="FROM",
+                            default=8,
+                            type=int,
+                            action="store",
+                            help="La hora a partir de la que es vol escoltar la ràdio.")
+        parser.add_argument("-t", "--to",
+                            dest='to_hour',
+                            metavar="TO",
+                            default=14,
+                            type=int,
+                            action="store",
+                            help="La hora fins la que es vol escoltar la ràdio.")
+        parser.add_argument("-s", "--start-first",
+                            dest='start_first',
+                            metavar="START",
+                            default="0",
+                            action="store",
+                            help=("El moment en que cal començar el primer podcast, "
+                                  "amb el format de l'opció '-ss' del mplayer."))
+        parser.add_argument("-x", "--exclude",
+                            dest='exclude',
+                            metavar="EXCLUDE1[,EXCLUDE2...]",
+                            default=[],
+                            action="append",
+                            help=("Programes a excloure, per hora o nom, "
+                                  "separats per coma i/o en diverses aparicions de '-x'."))
+        parser.add_argument("-l", "--clean-exclude",
+                            dest='exclude',
+                            action='store_const',
+                            const=[],
+                            help=("Neteja la llista d'exclusions definida fins el moment. "
+                                  "No afecta posteriors entrades de '-x'."))
 
-    # Return arguments and excludes
-    return args
+        # Parse arguments
+        args = parser.parse_args(argv)
+
+        # Normalize Date
+        setattr(args, 'date', self.parse_date(args.date))
+
+        # Normalize excludes: uppercase with no accents,
+        # splitted by comma into one-dimensional array
+        excludes = []
+        if len(args.exclude) > 0:
+
+            for exc in args.exclude:
+
+                # Exclude by hour
+                if isint(exc):
+                    excludes.append(exc)
+
+                # Exclude by name
+                else:
+
+                    # We're treating file input data here
+                    # We must take care of it's encoding here
+                    try:
+                        unicode(b'')
+                    except NameError: # Py3: nothing to do
+                        excludes.extend(normalize_encoding_upper(exc).split(b','))
+                    else: # Py2: Get Unicode string decoding from UTF8
+                        excludes.extend(normalize_encoding_upper(exc.decode('utf-8')).split(u','))
+
+        # Add excludes to parsed arguments object
+        setattr(args, 'excludes', excludes)
+
+        self._args = args
 
 
 class ExceptionDownloading(Exception):
@@ -724,7 +740,7 @@ def main(argv=None, filter_class=Filter, parser_class=Parser, player_class=MPlay
     '''Parses arguments, gets podcasts list and play its items according to arguments'''
 
     # Parse ARGv
-    args = parse_args(argv)
+    args = ParseArguments(argv)
 
     # Instantiate filter and parser classes
     rac1 = filter_class(args=args, parser=parser_class(date=args.date))
