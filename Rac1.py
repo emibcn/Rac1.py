@@ -131,6 +131,11 @@ def parse_args(argv):
                         default=False,
                         action="store_true",
                         help="Només mostra el que s'executaria.")
+    parser.add_argument("-u", "--print-url",
+                        dest='only_print_url',
+                        default=False,
+                        action="store_true",
+                        help="Només mostra les URLs dels podcast que s'escoltarien.")
     parser.add_argument("-d", "--date",
                         dest='date',
                         metavar="DATE",
@@ -262,6 +267,7 @@ class Rac1(object):
         excludes=[],
         start_first=0,
         only_print=False,
+        only_print_url=False,
     )
 
 
@@ -500,8 +506,13 @@ class Rac1(object):
 
         call_args = self.play_podcast_mplayer_call_args(podcast)
 
-        # Print?
-        if self.args.only_print:
+        # Print URL?
+        if self.args.only_print_url:
+            print(podcast['path'])
+            return
+
+        # Print command?
+        elif self.args.only_print:
 
             # Add quotes to link argument
             print_args = call_args[:]
@@ -638,7 +649,7 @@ def main(argv=None, rac1_class=Rac1):
             break
 
         # If we are only printing URLs (again, we played nothing), stop trying, too
-        if args.only_print:
+        if args.only_print or args.only_print_url:
             break
 
     return 0
