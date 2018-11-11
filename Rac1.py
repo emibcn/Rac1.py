@@ -350,16 +350,22 @@ class Rac1(object):
 
         # Parse response:
         # - Filter lines containing data-audio-id or data-audioteca-search-page
-        # - Decode from binary utf-8 to string
         # - Only get values for data-* HTML attributes, without quotes
-        data_list = [re.sub(my_re, r'\1=\2', line) \
-                 for line in data.split(u'\n')
-                     if u'data-audio-id' in line \
-                         or (not discard_pages and u'data-audioteca-search-page' in line)]
+        data_list = [
+            re.sub(my_re, r'\1=\2', line).split(u'=')
+            for line in data.split(u'\n')
+            if u'data-audio-id' in line \
+                or (not discard_pages and u'data-audioteca-search-page' in line)]
 
         # Filter results by type
-        audio_uuid_list = [line for line in data_list if u'data-audio-id' in line]
-        pages_list = [] if discard_pages else [line for line in data_list if u'data-audioteca-search-page' in line]
+        audio_uuid_list = [
+            line[1]
+            for line in data_list
+            if line[0] == u'data-audio-id']
+        pages_list = [] if discard_pages else [
+            line[1]
+            for line in data_list
+            if line[0] == u'data-audioteca-search-page']
 
         # Deduply
         audio_uuid_list_dedups = []
@@ -384,11 +390,8 @@ class Rac1(object):
         # [1:] : remove first page, as it has already been downloaded
         for page in pages_list[1:]:
 
-            # Get page number (discard variable name)
-            _, page_number = page.split(u'=')
-
             # Download page uuids
-            data = self.get_rac1_list_page(page_number)
+            data = self.get_rac1_list_page(page)
 
             # Parse page data (discard pages list, as we already have it)
             audio_uuid_list_page, _ = self.parse_rac1_list_page(data, discard_pages=True)
@@ -399,7 +402,7 @@ class Rac1(object):
                     audio_uuid_list.append(uuid)
 
         # Return only each audio's UUID (discard variable name)
-        return [varval.split(u'=')[1] for varval in audio_uuid_list]
+        return audio_uuid_list
 
 
     def get_podcast_data(self, uuid):
