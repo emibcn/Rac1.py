@@ -164,7 +164,7 @@ class VlcPlayer(Rac1.PlayerCommand):
     command_name = "VLC"
 
     @classmethod
-    def play_podcast_mplayer_call_args(cls, podcast):
+    def play_podcast_command_call_args(cls, podcast):
 
         # Parse seconds for dumb vlc
         time_list = str(podcast['start']).split(':')

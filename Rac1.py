@@ -277,26 +277,18 @@ def get_page(host, path, https=False):
     return req.status_code, req.text
 
 
-class Rac1(object):
-    '''Class to interact to Rac1 podcasts backend API'''
+class Parser(object):
+    '''Class to parse and interact to Rac1 podcasts backend API'''
 
     # Podcast cached data by audio UUID
     _podcast_data = {}
 
-    # Arguments to customize behaviour
-    args = configargparse.Namespace(
-        date='today',
-        from_hour='8',
-        to_hour='14',
-        excludes=[],
-        start_first=0,
-        only_print=False,
-        only_print_url=False,
-    )
+    # Date of podcasts to download
+    date = ""
 
 
-    def __init__(self, args=args):
-        self.args = args
+    def __init__(self, date):
+        self.date = date
 
 
     def get_rac1_list_page(self, page=0):
@@ -312,13 +304,13 @@ class Rac1(object):
                 "to={date}&"
                 "pageNumber={page}&"
                 "btn-search=").format(
-                    date=self.args.date,
+                    date=self.date,
                     page=page
                 )
 
         print(u"### Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {host}{path}" \
               .format(
-                  date=self.args.date,
+                  date=self.date,
                   host=host,
                   path=path))
 
@@ -459,6 +451,29 @@ class Rac1(object):
             yield self.get_podcast_data(uuid)
 
 
+class Filter(object):
+    '''Class to filter podcasts from Rac1 parser and re-download podcast feed if needed'''
+
+    # Backend parser which gives a podcast generator
+    parser = None
+
+    # Arguments to customize behaviour
+    args = configargparse.Namespace(
+        date='today',
+        from_hour='8',
+        to_hour='14',
+        excludes=[],
+        start_first=0,
+        only_print=False,
+        only_print_url=False,
+    )
+
+
+    def __init__(self, args=args, parser=None):
+        self.args = args
+        self.parser = parser if parser is not None else Parser(date=self.args.date)
+
+
     def filter_podcasts(self, podcasts):
         '''Generator for filtered podcasts using args'''
 
@@ -515,7 +530,7 @@ class Rac1(object):
     def get_filtered_podcasts(self):
         '''Returns filtered podcasts generator'''
         return self.filter_podcasts(
-            self.get_podcasts())
+            self.parser.get_podcasts())
 
 
     def get_autoreloaded_podcasts(self):
@@ -707,14 +722,14 @@ class MPlayerCommand(PlayerCommand):
         ]
 
 
-def main(argv=None, rac1_class=Rac1, player_class=MPlayerCommand):
+def main(argv=None, filter_class=Filter, parser_class=Parser, player_class=MPlayerCommand):
     '''Parses arguments, gets podcasts list and play its items according to arguments'''
 
     # Parse ARGv
     args = parse_args(argv)
 
     # Instantiate main class
-    rac1 = rac1_class(args=args)
+    rac1 = filter_class(args=args, parser=parser_class(date=args.date))
 
     # Instantiate player class
     player = player_class(args=args)
