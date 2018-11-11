@@ -271,7 +271,7 @@ class ExceptionPlayer(Exception):
         return self.message
 
 
-def get_page(host, path, https=False):
+def get_page(host, path, https=False, message=u"Error downloading page"):
     '''Downloads a page'''
 
     headers = {
@@ -290,7 +290,13 @@ def get_page(host, path, https=False):
             path=path),
         headers=headers)
 
-    return req.status_code, req.text
+    if req.status_code != 200:
+        raise ExceptionDownloading("{message}: {code} - {error}".format(
+            message=message,
+            code=req.status_code,
+            error=req.text))
+
+    return req.text
 
 
 class Parser(object):
@@ -332,16 +338,9 @@ class Parser(object):
                   host=host,
                   path=path))
 
-        status, data_raw = get_page(host, path, https=True)
-
-        if status != 200:
-            raise ExceptionDownloading(
-                (u"Error intentant descarregar la pàgina HTML "
-                 "amb el llistat de podcasts: "
-                 "{status}: {data}").format(
-                     status=status,
-                     data=data_raw
-                 ))
+        data_raw = get_page(host, path, https=True,
+                            message=(u"Error intentant descarregar la pàgina HTML "
+                                     "amb el llistat de podcasts: "))
 
         # Return downloaded page
         return data_raw
@@ -427,15 +426,9 @@ class Parser(object):
         path = "/piece/audio?id={uuid}".format(uuid=uuid)
 
         # Download podcast JSON data
-        status, data_raw = get_page(host, path, https=True)
-
-        if status != 200:
-            raise ExceptionDownloading(
-                u"Error intentant descarregar el JSON amb les dades del podcast: {status}: {data}" \
-                  .format(
-                      status=status,
-                      data=data_raw
-                  ))
+        data_raw = get_page(host, path, https=True,
+                            message=(u"Error intentant descarregar el "
+                                     "JSON amb les dades del podcast"))
 
         # Parse JSON data
         data = json.loads(data_raw)
