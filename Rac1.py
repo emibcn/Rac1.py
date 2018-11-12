@@ -46,6 +46,7 @@ import json
 import unicodedata
 import requests
 import configargparse
+import inspect
 
 
 '''
@@ -316,6 +317,10 @@ class Parser(object):
         self.date = date
 
 
+    def __call__(self):
+        return self.get_podcasts()
+
+
     def get_rac1_page(self, page=0):
         '''Download HTML with audio UUIDs'''
 
@@ -481,8 +486,30 @@ class Filter(object):
         self.args = args
         self.parser = parser if parser is not None else Parser(date=self.args.date)
 
+        # Generator initial state
+        self._podcasts = self.get_autoreloaded_podcasts()
 
-    def filter_podcasts(self, podcasts):
+
+    #
+    # Generator Implementation
+    #
+
+    def __next__(self):
+        return next(self._podcasts)
+
+    def next(self):
+        '''Py2 next() generator implementation'''
+        return self.__next__()
+
+    def __iter__(self):
+        return self
+
+
+    #
+    # Methods
+    #
+
+    def get_filtered_podcasts(self):
         '''Generator for filtered podcasts using args'''
 
         is_first = True
@@ -491,7 +518,7 @@ class Filter(object):
         date = u'-'.join(self.args.date.split(u'/')[::-1])
 
         # Process iterable generator and yield filtered podcasts
-        for podcast in podcasts:
+        for podcast in self.parser():
 
             play = True
 
@@ -533,12 +560,6 @@ class Filter(object):
             # Stop yielding (thus, downloading UUIDs) once `to_hour` is reached
             if podcast['audio']['hour'] >= self.args.to_hour:
                 break
-
-
-    def get_filtered_podcasts(self):
-        '''Returns filtered podcasts generator'''
-        return self.filter_podcasts(
-            self.parser.get_podcasts())
 
 
     def get_autoreloaded_podcasts(self):
@@ -706,7 +727,6 @@ class PlayerCommand(object):
         exit(3)
 
 
-
 class MPlayerCommand(PlayerCommand):
     '''Class to play Rac1 podcasts using MPlayer command'''
 
@@ -748,7 +768,7 @@ def main(argv=None, filter_class=Filter, parser_class=Parser, player_class=MPlay
     #  - Handling two possible expected Exceptions to exit cleanly
     try:
         # Iterate over autoreloaded podcasts generator
-        for podcast in rac1.get_autoreloaded_podcasts():
+        for podcast in rac1:
 
             try:
                 # Play podcast or only print command or URL
