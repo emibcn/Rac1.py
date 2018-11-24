@@ -558,7 +558,9 @@ class Filter(object):
                       ))
 
             # Stop yielding (thus, downloading UUIDs) once `to_hour` is reached
-            if podcast['audio']['hour'] >= self.args.to_hour:
+            # Only jump if it's from same day
+            if date == podcast['audio']['date'] and \
+                podcast['audio']['hour'] >= self.args.to_hour:
                 break
 
 
@@ -587,6 +589,14 @@ class Filter(object):
 
                         # Yield podcast
                         yield podcast
+
+                    else:
+                        print(u'### Ja escoltat "{title}" {hour}h: {path}' \
+                              .format(
+                                  title=podcast['audio']['title'],
+                                  hour=podcast['audio']['hour'],
+                                  path=podcast['path']
+                              ))
 
             except ExceptionDownloading:
                 raise
