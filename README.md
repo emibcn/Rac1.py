@@ -64,7 +64,10 @@ declare some other via arguments, you will expect all of them to be together. In
 overwrites the config file excludes with the arguments ones (sic).
 
 ## See also
-[Joan Domingo's - Podcasts-RAC1-Android](https://github.com/joan-domingo/Podcasts-RAC1-Android)
+- My ReactJS app (inspired by this one):
+  - Repository: https://github.com/emibcn/Rac1.js
+  - Public Github Pages: https://emibcn.github.io/Rac1.js/
+- [Joan Domingo's - Podcasts-RAC1-Android](https://github.com/joan-domingo/Podcasts-RAC1-Android)
 
 ## Script help (catalan)
 
