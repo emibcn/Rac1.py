@@ -3,6 +3,6 @@
 
 import Rac1
 
+
 def test_dummy():
     assert 1 == 1, 'Dummy test'
-

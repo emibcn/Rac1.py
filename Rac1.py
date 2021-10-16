@@ -102,11 +102,9 @@ class ParseArguments(object):
         '''Return arguments'''
         return getattr(self._args, item)
 
-
     def __init__(self, argv):
         '''Call argument parsing method on initialization'''
         self.parse_arguments(argv)
-
 
     @classmethod
     def parse_date(cls, date_arg):
@@ -128,7 +126,6 @@ class ParseArguments(object):
 
         # Return date string parsed as DD/MM/YYYY
         return date.strftime('%d/%m/%Y')
-
 
     def parse_arguments(self, argv):
         '''Parse ARGv, `env` and config files, and return arg object'''
@@ -239,10 +236,12 @@ class ParseArguments(object):
                     # We must take care of it's encoding here
                     try:
                         unicode(b'')
-                    except NameError: # Py3: nothing to do
-                        excludes.extend(normalize_encoding_upper(exc).split(b','))
-                    else: # Py2: Get Unicode string decoding from UTF8
-                        excludes.extend(normalize_encoding_upper(exc.decode('utf-8')).split(u','))
+                    except NameError:  # Py3: nothing to do
+                        excludes.extend(
+                            normalize_encoding_upper(exc).split(b','))
+                    else:  # Py2: Get Unicode string decoding from UTF8
+                        excludes.extend(normalize_encoding_upper(
+                            exc.decode('utf-8')).split(u','))
 
         # Add excludes to parsed arguments object
         setattr(args, 'excludes', excludes)
@@ -312,14 +311,11 @@ class Parser(object):
     # Compiled RegExp for data attributes parsing
     _data_attrs_re = re.compile(r'^.* (data-[^=]*)="([^"]*)".*$')
 
-
     def __init__(self, date):
         self.date = date
 
-
     def __call__(self):
         return self.get_podcasts()
-
 
     def get_rac1_page(self, page=0):
         '''Download HTML with audio UUIDs'''
@@ -337,7 +333,7 @@ class Parser(object):
                     date=self.date,
                     page=page)
 
-        print(u"### Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {host}{path}" \
+        print(u"### Descarreguem Feed HTML del llistat de Podcasts amb data {date}: {host}{path}"
               .format(
                   date=self.date,
                   host=host,
@@ -349,7 +345,6 @@ class Parser(object):
 
         # Return downloaded page
         return data_raw
-
 
     def parse_rac1_page(self, data_raw, discard_pages=False):
         '''
@@ -364,8 +359,8 @@ class Parser(object):
         data = (
             re.sub(self._data_attrs_re, r'\1=\2', line).split(u'=')
             for line in data_raw.split(u'\n')
-            if u'data-audio-id' in line \
-                or (not discard_pages and u'data-audioteca-search-page' in line))
+            if u'data-audio-id' in line
+            or (not discard_pages and u'data-audioteca-search-page' in line))
 
         # Convert to list if we need pages generator (cache), let as generator if not
         if not discard_pages:
@@ -383,7 +378,6 @@ class Parser(object):
 
         # Return segregated generators
         return uuids, pages
-
 
     def get_podcasts_uuids(self):
         '''Full day unique audio UUIDs generator'''
@@ -416,7 +410,6 @@ class Parser(object):
 
             page = next(pages)
 
-
     def get_podcast_data(self, uuid):
         '''Download podcast information by its UUID'''
 
@@ -444,7 +437,6 @@ class Parser(object):
         # Save cache and return parsed data
         self._podcast_data[uuid] = data
         return data
-
 
     def get_podcasts(self):
         '''
@@ -481,14 +473,13 @@ class Filter(object):
         only_print_url=False,
     )
 
-
     def __init__(self, args=args, parser=None):
         self.args = args
-        self.parser = parser if parser is not None else Parser(date=self.args.date)
+        self.parser = parser if parser is not None else Parser(
+            date=self.args.date)
 
         # Generator initial state
         self._podcasts = self.get_autoreloaded_podcasts()
-
 
     #
     # Generator Implementation
@@ -503,7 +494,6 @@ class Filter(object):
 
     def __iter__(self):
         return self
-
 
     #
     # Methods
@@ -536,7 +526,7 @@ class Filter(object):
 
                     # Exclude by hour and by name
                     if (isint(exc) and int(exc) == podcast['audio']['hour']) or \
-                         exc in normalize_encoding_upper(podcast['audio']['title']):
+                            exc in normalize_encoding_upper(podcast['audio']['title']):
                         play = False
 
             # If we have to play this podcast
@@ -550,7 +540,7 @@ class Filter(object):
                 yield podcast
 
             else:
-                print(u'### Filtrem "{title}" {hour}h: {path}' \
+                print(u'### Filtrem "{title}" {hour}h: {path}'
                       .format(
                           title=podcast['audio']['title'],
                           hour=podcast['audio']['hour'],
@@ -560,9 +550,8 @@ class Filter(object):
             # Stop yielding (thus, downloading UUIDs) once `to_hour` is reached
             # Only jump if it's from same day
             if date == podcast['audio']['date'] and \
-                podcast['audio']['hour'] >= self.args.to_hour:
+                    podcast['audio']['hour'] >= self.args.to_hour:
                 break
-
 
     def get_autoreloaded_podcasts(self):
         '''Generator for an autoreloaded list of podcasts'''
@@ -591,7 +580,7 @@ class Filter(object):
                         yield podcast
 
                     else:
-                        print(u'### Ja escoltat "{title}" {hour}h: {path}' \
+                        print(u'### Ja escoltat "{title}" {hour}h: {path}'
                               .format(
                                   title=podcast['audio']['title'],
                                   hour=podcast['audio']['hour'],
@@ -630,10 +619,8 @@ class PlayerCommand(object):
         only_print_url=False,
     )
 
-
     def __init__(self, args=args):
         self.args = args
-
 
     @classmethod
     def play_podcast_command_call_args(cls, podcast):
@@ -643,7 +630,6 @@ class PlayerCommand(object):
         '''
         raise NotImplementedError((u"Subclass should implement command "
                                    "arguments creation as a `@classmethod`."))
-
 
     def play_podcast(self, podcast):
         '''Play a podcast with an external command, or only print the command'''
@@ -666,7 +652,7 @@ class PlayerCommand(object):
             print(*print_args, sep=" ")
             return
 
-        print(u'### Escoltem "{title}" {hour}h: {path}' \
+        print(u'### Escoltem "{title}" {hour}h: {path}'
               .format(
                   title=podcast['audio']['title'],
                   hour=podcast['audio']['hour'],
@@ -674,7 +660,8 @@ class PlayerCommand(object):
               ))
 
         # Set title for command manager
-        print(u"\x1B]2;{} {}h\x07".format(podcast['audio']['title'], podcast['audio']['hour']))
+        print(u"\x1B]2;{} {}h\x07".format(
+            podcast['audio']['title'], podcast['audio']['hour']))
 
         # Listen with command
         # Use try to catch CTRL+C correctly
@@ -687,8 +674,7 @@ class PlayerCommand(object):
                 command=self.command_name,
                 error=exc.output))
 
-
-    def signal_handler(self, sign, *_): # Unused frame argument
+    def signal_handler(self, sign, *_):  # Unused frame argument
         '''Exits cleanly'''
 
         # Don't begin exit process more than once
@@ -707,7 +693,8 @@ class PlayerCommand(object):
 
         # If mplayer process is defined
         if self._process is not None:
-            print(u"Waiting for {command} to finish...".format(command=self.command_name))
+            print(u"Waiting for {command} to finish...".format(
+                command=self.command_name))
 
             import psutil
 
@@ -728,10 +715,11 @@ class PlayerCommand(object):
                 process.wait()
 
             except psutil.NoSuchProcess:
-                print(u"{command} already ended.".format(command=self.command_name))
+                print(u"{command} already ended.".format(
+                    command=self.command_name))
 
         # Reset terminal
-        #subprocess.Popen(['reset']).wait()
+        # subprocess.Popen(['reset']).wait()
 
         # If we are handling signal, we can exit program
         exit(3)
